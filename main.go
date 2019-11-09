@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	. "fmt"
 	"github.com/julienschmidt/httprouter"
+	"github.com/subosito/gotenv"
 	"io"
 	"io/ioutil"
 	"log"
@@ -61,6 +62,7 @@ func jsonResponse(w http.ResponseWriter, code int, message string) {
 }
 
 func main() {
+	gotenv.Load()
 	router := httprouter.New()
 	router.POST("/upload", UploadFile)
 	router.ServeFiles("/*filepath", http.Dir("./public"))
