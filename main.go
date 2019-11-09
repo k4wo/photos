@@ -2,7 +2,7 @@ package main
 
 import (
 	"crypto/sha1"
-	. "fmt"
+	"fmt"
 	"github.com/julienschmidt/httprouter"
 	"github.com/subosito/gotenv"
 	"io"
@@ -13,13 +13,16 @@ import (
 	"time"
 )
 
+// FileField is name of the field with a file
 const FileField = "file"
+
+// UploadDir point to the place where files are stored
 const UploadDir = "./files/"
 
 func createFileName(name, user string) (string, error) {
 	today := time.Now()
 	now := today.UnixNano()
-	fileName := Sprintf("%s_%s_%d", name, user, now)
+	fileName := fmt.Sprintf("%s_%s_%d", name, user, now)
 
 	h := sha1.New()
 	_, err := io.WriteString(h, fileName)
@@ -27,19 +30,19 @@ func createFileName(name, user string) (string, error) {
 		return "", err
 	}
 
-	return Sprintf("%x", h.Sum(nil)), nil
+	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
 
 func saveFile(w http.ResponseWriter, file multipart.File, FileHeader *multipart.FileHeader) {
 	data, err := ioutil.ReadAll(file)
 	if err != nil {
-		_, _ = Fprintf(w, "%v", err)
+		_, _ = fmt.Fprintf(w, "%v", err)
 		return
 	}
 
 	err = ioutil.WriteFile(UploadDir+FileHeader.Filename, data, 0666)
 	if err != nil {
-		_, _ = Fprintf(w, "%v", err)
+		_, _ = fmt.Fprintf(w, "%v", err)
 		return
 	}
 
@@ -58,7 +61,7 @@ func saveFile(w http.ResponseWriter, file multipart.File, FileHeader *multipart.
 func jsonResponse(w http.ResponseWriter, code int, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	_, _ = Fprint(w, message)
+	_, _ = fmt.Fprint(w, message)
 }
 
 func main() {

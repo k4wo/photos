@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-type JsonExif struct {
+type exifFields struct {
 	ApertureValue                    []string `json:"ApertureValue"`
 	BrightnessValue                  []string `json:"BrightnessValue"`
 	ColorSpace                       []int    `json:"ColorSpace"`
@@ -64,26 +64,27 @@ type JsonExif struct {
 	YResolution                      []string `json:"YResolution"`
 }
 
+// ImageInfo image data (should have the same info like in db)
 type ImageInfo struct {
-	time time.Time // DateTime
-	xDimension int // PixelXDimension
-	yDimension int // PixelYDimension
-	fNumber float32 // FNumber
-	exposureTime string // ExposureTime
-	focalLength float32 // FocalLength (mm)
-	iso int // ISOSpeedRatings
-	camera string // Make
-	model string // Model
-	orientation int // Orientation
-	longitude float64
-	latitude float64
-	name string
-	extension string
-	mimeType string
-	size int
+	time         time.Time // DateTime
+	xDimension   int       // PixelXDimension
+	yDimension   int       // PixelYDimension
+	fNumber      float32   // FNumber
+	exposureTime string    // ExposureTime
+	focalLength  float32   // FocalLength (mm)
+	iso          int       // ISOSpeedRatings
+	camera       string    // Make
+	model        string    // Model
+	orientation  int       // Orientation
+	longitude    float64
+	latitude     float64
+	name         string
+	extension    string
+	mimeType     string
+	size         int
 }
 
-func parseValues(val []string) (float64, float64)  {
+func parseValues(val []string) (float64, float64) {
 	values := strings.Split(val[0], "/")
 	first, err := strconv.ParseFloat(values[0], 32)
 	second, err := strconv.ParseFloat(values[1], 32)
@@ -110,7 +111,7 @@ func parseExposureTime(val []string) string {
 	return fmt.Sprintf("%d/%d", int(x/x), int(y/x))
 }
 
-func extractExif(data []byte)  (ImageInfo, error)  {
+func extractExif(data []byte) (ImageInfo, error) {
 	kind, err := filetype.Match(data)
 	if kind == filetype.Unknown || err != nil {
 		fmt.Println("Unknown file type", err)
@@ -122,9 +123,9 @@ func extractExif(data []byte)  (ImageInfo, error)  {
 		return ImageInfo{}, err
 	}
 
-	var jsonExif JsonExif
-	byteJson, err := fileExif.MarshalJSON()
-	err = json.Unmarshal(byteJson, &jsonExif)
+	var jsonExif exifFields
+	byteJSON, err := fileExif.MarshalJSON()
+	err = json.Unmarshal(byteJSON, &jsonExif)
 	if err != nil {
 		fmt.Println("Can't parse JSON EXIF. ", err)
 	}
