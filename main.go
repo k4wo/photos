@@ -50,10 +50,11 @@ func saveFile(w http.ResponseWriter, file multipart.File, FileHeader *multipart.
 	}
 
 	fileInfo, _ := extractExif(data)
-	fileInfo.name, err = createFileName(FileHeader.Filename, "k4wo")
+	fileInfo.name = FileHeader.Filename
+	fileInfo.hash, err = createFileName(FileHeader.Filename, "k4wo")
 	if err != nil {
 		// TODO: Find better approach!
-		fileInfo.name, err = createFileName(FileHeader.Filename, "k4wo")
+		fileInfo.hash, err = createFileName(FileHeader.Filename, "k4wo")
 	}
 
 	jsonResponse(w, http.StatusCreated, STRINGS["uploadedSuccessfully"])

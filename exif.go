@@ -79,6 +79,7 @@ type ImageInfo struct {
 	longitude    float64
 	latitude     float64
 	name         string
+	hash         string
 	extension    string
 	mimeType     string
 	size         int
@@ -146,6 +147,7 @@ func extractExif(data []byte) (ImageInfo, error) {
 		jsonExif.Orientation[0],
 		long,
 		lat,
+		"",
 		"",
 		kind.Extension,
 		kind.MIME.Value,
