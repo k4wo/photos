@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/sha1"
-	"database/sql"
 	"fmt"
 	"github.com/julienschmidt/httprouter"
 	_ "github.com/lib/pq"
@@ -12,7 +11,6 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
-	"os"
 	"time"
 )
 
@@ -21,6 +19,8 @@ const FileField = "file"
 
 // UploadDir point to the place where files are stored
 const UploadDir = "./files/"
+
+var db dbStruct
 
 func createFileName(name, user string) (string, error) {
 	today := time.Now()
@@ -57,6 +57,7 @@ func saveFile(w http.ResponseWriter, file multipart.File, FileHeader *multipart.
 		fileInfo.hash, err = createFileName(FileHeader.Filename, "k4wo")
 	}
 
+	db.saveImage(&fileInfo)
 	jsonResponse(w, http.StatusCreated, STRINGS["uploadedSuccessfully"])
 }
 
@@ -68,26 +69,7 @@ func jsonResponse(w http.ResponseWriter, code int, message string) {
 
 func main() {
 	gotenv.Load()
-
-	dbConfig := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		os.Getenv("DB_HOST"),
-		os.Getenv("DB_PORT"),
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_PASSWORD"),
-		os.Getenv("DB_NAME"),
-	)
-
-	db, err := sql.Open("postgres", dbConfig)
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
-
-	err = db.Ping()
-	if err != nil {
-		panic(err)
-	}
+	db = dbConnection()
 
 	router := httprouter.New()
 	router.POST("/upload", UploadFile)
