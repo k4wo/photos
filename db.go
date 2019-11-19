@@ -23,8 +23,8 @@ func (store *dbStruct) saveImage(image *ImageInfo) {
 			type, owner, name, hash, size, extension, 
 			mime, latitude, longitude, orientation, 
 			model, camera, iso, focal_length, 
-			exposure_time, f_number, y_dimension, 
-			x_dimension, date
+			exposure_time, f_number, height, 
+			width, date
 		) 
 		VALUES 
 			(
@@ -51,8 +51,8 @@ func (store *dbStruct) saveImage(image *ImageInfo) {
 		image.focalLength,
 		image.exposureTime,
 		image.fNumber,
-		image.yDimension,
-		image.xDimension,
+		image.height,
+		image.width,
 		image.time,
 	)
 

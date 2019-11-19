@@ -67,8 +67,8 @@ type exifFields struct {
 // ImageInfo image data (should have the same info like in db)
 type ImageInfo struct {
 	time         time.Time // DateTime
-	xDimension   int       // PixelXDimension
-	yDimension   int       // PixelYDimension
+	width        uint      // PixelXDimension
+	height       uint      // PixelYDimension
 	fNumber      float32   // FNumber
 	exposureTime string    // ExposureTime
 	focalLength  float32   // FocalLength (mm)
@@ -109,7 +109,14 @@ func parseExposureTime(val []string) string {
 		return ""
 	}
 
-	return fmt.Sprintf("%d/%d", int(x/x), int(y/x))
+	var second uint
+	if int(y) == 1 {
+		second = uint(x)
+	} else {
+		second = uint(y / x)
+	}
+
+	return fmt.Sprintf("%d/%d", int(x/x), second)
 }
 
 func extractExif(data []byte) (ImageInfo, error) {
@@ -136,8 +143,8 @@ func extractExif(data []byte) (ImageInfo, error) {
 
 	return ImageInfo{
 		dateTime,
-		jsonExif.PixelXDimension[0],
-		jsonExif.PixelYDimension[0],
+		uint(jsonExif.PixelXDimension[0]),
+		uint(jsonExif.PixelYDimension[0]),
 		convertToFloat(jsonExif.FNumber),
 		parseExposureTime(jsonExif.ExposureTime),
 		convertToFloat(jsonExif.FocalLength),
