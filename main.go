@@ -2,16 +2,18 @@ package main
 
 import (
 	"crypto/sha1"
+	"encoding/json"
 	"fmt"
-	"github.com/julienschmidt/httprouter"
-	_ "github.com/lib/pq"
-	"github.com/subosito/gotenv"
 	"io"
 	"io/ioutil"
 	"log"
 	"mime/multipart"
 	"net/http"
 	"time"
+
+	"github.com/julienschmidt/httprouter"
+	_ "github.com/lib/pq"
+	"github.com/subosito/gotenv"
 )
 
 // FileField is name of the field with a file
@@ -43,6 +45,7 @@ func saveFile(w http.ResponseWriter, file multipart.File, FileHeader *multipart.
 		return
 	}
 
+	// BUG: don't use real name for file name, can be overrided
 	err = ioutil.WriteFile(UploadDir+FileHeader.Filename, data, 0666)
 	if err != nil {
 		_, _ = fmt.Fprintf(w, "%v", err)
@@ -50,14 +53,15 @@ func saveFile(w http.ResponseWriter, file multipart.File, FileHeader *multipart.
 	}
 
 	fileInfo, _ := extractExif(data)
-	fileInfo.name = FileHeader.Filename
-	fileInfo.hash, err = createFileName(FileHeader.Filename, "k4wo")
+	fileInfo.Name = FileHeader.Filename
+	fileInfo.Hash, err = createFileName(FileHeader.Filename, "k4wo")
 	if err != nil {
 		// TODO: Find better approach!
-		fileInfo.hash, err = createFileName(FileHeader.Filename, "k4wo")
+		fileInfo.Hash, err = createFileName(FileHeader.Filename, "k4wo")
 	}
 
 	db.saveImage(&fileInfo)
+	resizeImage(data, fileInfo)
 	jsonResponse(w, http.StatusCreated, STRINGS["uploadedSuccessfully"])
 }
 
@@ -67,13 +71,24 @@ func jsonResponse(w http.ResponseWriter, code int, message string) {
 	_, _ = fmt.Fprint(w, message)
 }
 
+func fetchImages(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	image, err := db.getImages()
+	if err != nil {
+		fmt.Println("handle error")
+	}
+
+	json.NewEncoder(w).Encode(image)
+}
+
 func main() {
 	gotenv.Load()
 	db = dbConnection()
 
 	router := httprouter.New()
+
 	router.POST("/upload", UploadFile)
-	router.ServeFiles("/*filepath", http.Dir("./public"))
+	router.GET("/images", fetchImages)
+	// router.ServeFiles("/*filepath", http.Dir("./public"))
 
 	log.Println("Running")
 	http.ListenAndServe(":8080", router)

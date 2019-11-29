@@ -17,6 +17,66 @@ type dbStruct struct {
 	connection *sql.DB
 }
 
+func (store *dbStruct) getImages() ([]ImageInfo, error) {
+	query := `
+		SELECT
+			owner,
+			name,
+			hash,
+			size,
+			extension,
+			mime,
+			latitude,
+			longitude,
+			orientation,
+			model,
+			camera,
+			iso,
+			focal_length,
+			exposure_time,
+			f_number,
+			height,
+			width,
+			date
+		FROM files`
+	rows, _ := store.connection.Query(query)
+	defer rows.Close()
+
+	var images []ImageInfo
+	for rows.Next() {
+		image := ImageInfo{}
+		err := rows.Scan(
+			&image.Owner,
+			&image.Name,
+			&image.Hash,
+			&image.Size,
+			&image.Extension,
+			&image.MimeType,
+			&image.Latitude,
+			&image.Longitude,
+			&image.Orientation,
+			&image.Model,
+			&image.Camera,
+			&image.Iso,
+			&image.FocalLength,
+			&image.ExposureTime,
+			&image.FNumber,
+			&image.Height,
+			&image.Width,
+			&image.Date,
+		)
+
+		if err == nil {
+			images = append(images, image)
+		}
+
+		if err != nil {
+			return images, err
+	}
+
+	return images, nil
+}
+
 func (store *dbStruct) saveImage(image *ImageInfo) {
 	sql := `
 		INSERT INTO files (
@@ -37,23 +97,23 @@ func (store *dbStruct) saveImage(image *ImageInfo) {
 		sql,
 		fileType["image"],
 		1, // TODO: change it
-		image.name,
-		image.hash,
-		image.size,
-		image.extension,
-		image.mimeType,
-		image.latitude,
-		image.longitude,
-		image.orientation,
-		image.model,
-		image.camera,
-		image.iso,
-		image.focalLength,
-		image.exposureTime,
-		image.fNumber,
-		image.height,
-		image.width,
-		image.time,
+		image.Name,
+		image.Hash,
+		image.Size,
+		image.Extension,
+		image.MimeType,
+		image.Latitude,
+		image.Longitude,
+		image.Orientation,
+		image.Model,
+		image.Camera,
+		image.Iso,
+		image.FocalLength,
+		image.ExposureTime,
+		image.FNumber,
+		image.Height,
+		image.Width,
+		image.Date,
 	)
 
 	if err != nil {

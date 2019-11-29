@@ -66,23 +66,24 @@ type exifFields struct {
 
 // ImageInfo image data (should have the same info like in db)
 type ImageInfo struct {
-	time         time.Time // DateTime
-	width        uint      // PixelXDimension
-	height       uint      // PixelYDimension
-	fNumber      float32   // FNumber
-	exposureTime string    // ExposureTime
-	focalLength  float32   // FocalLength (mm)
-	iso          int       // ISOSpeedRatings
-	camera       string    // Make
-	model        string    // Model
-	orientation  int       // Orientation
-	longitude    float64
-	latitude     float64
-	name         string
-	hash         string
-	extension    string
-	mimeType     string
-	size         int
+	Date         time.Time `json:"date"`         // DateTime
+	Width        uint      `json:"width"`        // PixelXDimension
+	Height       uint      `json:"height"`       // PixelYDimension
+	FNumber      float32   `json:"fNumber"`      // FNumber
+	ExposureTime string    `json:"exposureTime"` // ExposureTime
+	FocalLength  float32   `json:"focalLength"`  // FocalLength (mm)
+	Iso          int       `json:"iso"`          // ISOSpeedRatings
+	Camera       string    `json:"camera"`       // Make
+	Model        string    `json:"model"`        // Model
+	Orientation  int       `json:"orientation"`  // Orientation
+	Longitude    float64   `json:"longitude"`
+	Latitude     float64   `json:"latitude"`
+	Name         string    `json:"name"`
+	Hash         string    `json:"hash"`
+	Extension    string    `json:"extension"`
+	MimeType     string    `json:"mimeType"`
+	Size         int       `json:"size"`
+	Owner        int       `json:"owner"`
 }
 
 func parseValues(val []string) (float64, float64) {
@@ -159,5 +160,6 @@ func extractExif(data []byte) (ImageInfo, error) {
 		kind.Extension,
 		kind.MIME.Value,
 		len(data),
+		1,
 	}, nil
 }

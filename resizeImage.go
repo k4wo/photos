@@ -28,12 +28,12 @@ func resizeImage(image []byte, info ImageInfo) {
 		panic(err)
 	}
 
-	mobileW, mobileH := getDimensions(info.width, info.height, displayWidth)
+	mobileW, mobileH := getDimensions(info.Width, info.Height, displayWidth)
 	mw.ResizeImage(mobileW, mobileH, imagick.FILTER_LANCZOS)
 
 	if err := mw.SetImageCompressionQuality(75); err != nil {
 		panic(err)
 	}
 
-	mw.WriteImage(UploadDir + info.hash + "_mobile")
+	mw.WriteImage(UploadDir + info.Hash + "_mobile")
 }
