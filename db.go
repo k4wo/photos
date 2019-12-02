@@ -72,6 +72,7 @@ func (store *dbStruct) getImages() ([]ImageInfo, error) {
 
 		if err != nil {
 			return images, err
+		}
 	}
 
 	return images, nil
