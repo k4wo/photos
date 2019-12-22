@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS "public"."files" (
   "model" varchar,
   "camera" varchar,
   "iso" int2,
-  "focal_length" int2,
+  "focal_length" float4,
   "exposure_time" varchar,
   "f_number" decimal(5, 1),
   "width" int2,
@@ -42,15 +42,17 @@ CREATE TABLE IF NOT EXISTS "public"."files" (
 -- Sequence and defined type
 CREATE SEQUENCE IF NOT EXISTS albums_id_seq;
 -- Table Definition
-CREATE TABLE IF NOT EXISTS "public"."albums" (
-  "id" int4 NOT NULL DEFAULT nextval('albums_id_seq' :: regclass),
-  "owner" int4 NOT NULL,
-  "name" varchar NOT NULL,
-  "size" int4 NOT NULL DEFAULT '0' :: bigint,
-  "updated_at" timestamptz DEFAULT now(),
-  "created_at" timestamptz DEFAULT now(),
-  CONSTRAINT "albums_owner_fkey" FOREIGN KEY ("owner") REFERENCES "public"."users" ("id"),
-  PRIMARY KEY ("id")
+CREATE TABLE "public"."albums" (
+    "id" int4 NOT NULL DEFAULT nextval('albums_id_seq'::regclass),
+    "owner" int4 NOT NULL,
+    "name" varchar NOT NULL,
+    "size" int4 NOT NULL DEFAULT '0'::bigint,
+    "cover" int4,
+    "updated_at" time DEFAULT now(),
+    "created_at" time DEFAULT now(),
+    CONSTRAINT "albums_cover_fkey" FOREIGN KEY ("cover") REFERENCES "public"."files"("id"),
+    CONSTRAINT "albums_owner_fkey" FOREIGN KEY ("owner") REFERENCES "public"."users"("id"),
+    PRIMARY KEY ("id")
 );
 -- Sequence and defined type
 CREATE SEQUENCE IF NOT EXISTS album_file_id_seq;
