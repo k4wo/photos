@@ -13,11 +13,13 @@ import (
 
 // Album is representation of db album table
 type Album struct {
-	ID    int      `json:"id"`
-	Name  string   `json:"name"`
-	Size  int      `json:"size"`
-	Owner int      `json:"owner"`
-	Cover null.Int `json:"cover"`
+	ID        int      `json:"id"`
+	Name      string   `json:"name"`
+	Size      int      `json:"size"`
+	Owner     int      `json:"owner"`
+	Cover     null.Int `json:"cover"`
+	UpdatedAt string   `json:"updatedAt"`
+	CreatedAt string   `json:"createdAt"`
 }
 
 func (store *dbStruct) getAlbum(name string, userID int) (Album, error) {
@@ -32,8 +34,7 @@ func (store *dbStruct) getAlbum(name string, userID int) (Album, error) {
 		WHERE owner = $1 AND name = $2`
 
 	row := store.connection.QueryRow(query, userID, name)
-	album := Album{}
-	err := row.Scan(&album.ID, &album.Owner, &album.Name, &album.Size, &album.Cover)
+	album, err := scanAlbum(row)
 
 	return album, err
 }
@@ -58,6 +59,8 @@ func (store *dbStruct) getAlbums() ([]Album, error) {
 			&album.Owner,
 			&album.Name,
 			&album.Size,
+			&album.UpdatedAt,
+			&album.CreatedAt,
 			&album.Cover,
 		)
 
@@ -73,6 +76,21 @@ func (store *dbStruct) getAlbums() ([]Album, error) {
 	return albums, nil
 }
 
+func scanAlbum(row *sql.Row) (Album, error) {
+	album := Album{}
+	err := row.Scan(
+		&album.ID,
+		&album.Owner,
+		&album.Name,
+		&album.Size,
+		&album.UpdatedAt,
+		&album.CreatedAt,
+		&album.Cover,
+	)
+
+	return album, err
+}
+
 func (store *dbStruct) createAlbum(name string) (Album, error) {
 	if name == "" {
 		msg := fmt.Sprintf(STRINGS["noAlbumName"])
@@ -86,17 +104,14 @@ func (store *dbStruct) createAlbum(name string) (Album, error) {
 		return album, err
 	}
 
-	query := `INSERT INTO albums(owner, name) VALUES($1, $2)`
-	_, err = store.connection.Exec(
+	query := `INSERT INTO albums(owner, name) VALUES($1, $2) RETURNING *`
+	row := store.connection.QueryRow(
 		query,
 		userID,
 		name,
 	)
 
-	if err != nil {
-		return album, err
-	}
-
+	album, err = scanAlbum(row)
 	return album, err
 }
 
@@ -110,7 +125,7 @@ func fetchAlbums(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	json.NewEncoder(w).Encode(album)
 }
 
-func setNewAlbum(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func addNewAlbum(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	enableCors(&w)
 	type Payload struct {
 		Name string `json:"name"`
@@ -119,12 +134,12 @@ func setNewAlbum(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
 	err := json.NewDecoder(r.Body).Decode(&payload)
 	if err != nil {
-		fmt.Println("setNewAlbum", err)
+		fmt.Println("addNewAlbum", err)
 	}
 
 	album, err := db.createAlbum(payload.Name)
 	if err != nil {
-		fmt.Println("setNewAlbum", err)
+		fmt.Println("addNewAlbum", err)
 	}
 
 	json.NewEncoder(w).Encode(album)

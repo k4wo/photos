@@ -72,12 +72,17 @@ func jsonResponse(w http.ResponseWriter, code int, message string) {
 }
 
 func fetchImages(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	enableCors(&w)
 	image, err := db.getImages()
 	if err != nil {
 		fmt.Println("handle error")
 	}
 
 	json.NewEncoder(w).Encode(image)
+}
+
+func enableCors(w *http.ResponseWriter) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
 }
 
 func main() {
@@ -88,7 +93,11 @@ func main() {
 
 	router.POST("/upload", UploadFile)
 	router.GET("/images", fetchImages)
-	// router.ServeFiles("/*filepath", http.Dir("./public"))
+
+	router.GET("/albums", fetchAlbums)
+	router.POST("/albums", addNewAlbum)
+
+	router.ServeFiles("/files/*filepath", http.Dir("./files"))
 
 	log.Println("Running")
 	http.ListenAndServe(":8080", router)
