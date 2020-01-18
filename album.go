@@ -22,16 +22,20 @@ type Album struct {
 	CreatedAt string   `json:"createdAt"`
 }
 
+var selectAlbum = `
+	SELECT
+		id,
+		owner,
+		name,
+		size,
+		cover,
+		updated_at,
+		created_at
+	FROM albums
+`
+
 func (store *dbStruct) getAlbum(name string, userID int) (Album, error) {
-	query := `
-		SELECT
-			id,
-			owner,
-			name,
-			size,
-			cover
-		FROM albums
-		WHERE owner = $1 AND name = $2`
+	query := selectAlbum + " WHERE owner = $1 AND name = $2"
 
 	row := store.connection.QueryRow(query, userID, name)
 	album, err := scanAlbum(row)
@@ -40,15 +44,7 @@ func (store *dbStruct) getAlbum(name string, userID int) (Album, error) {
 }
 
 func (store *dbStruct) getAlbums() ([]Album, error) {
-	query := `
-		SELECT
-			id,
-			owner,
-			name,
-			size,
-			cover
-		FROM albums`
-	rows, _ := store.connection.Query(query)
+	rows, _ := store.connection.Query(selectAlbum)
 	defer rows.Close()
 
 	var albums []Album
@@ -59,9 +55,9 @@ func (store *dbStruct) getAlbums() ([]Album, error) {
 			&album.Owner,
 			&album.Name,
 			&album.Size,
+			&album.Cover,
 			&album.UpdatedAt,
 			&album.CreatedAt,
-			&album.Cover,
 		)
 
 		if err == nil {
