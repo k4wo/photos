@@ -17,7 +17,7 @@ type dbStruct struct {
 	connection *sql.DB
 }
 
-func (store *dbStruct) getImages() ([]ImageInfo, error) {
+func (store *dbStruct) getImages() ([]File, error) {
 	query := `
 		SELECT
 			owner,
@@ -45,7 +45,7 @@ func (store *dbStruct) getImages() ([]ImageInfo, error) {
 	return filesScanner(rows)
 }
 
-func (store *dbStruct) saveImage(image *ImageInfo) {
+func (store *dbStruct) saveImage(image *File) {
 	sql := `
 		INSERT INTO files (
 			type, owner, name, hash, size, extension, 

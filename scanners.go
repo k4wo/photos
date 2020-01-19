@@ -4,10 +4,10 @@ import (
 	"database/sql"
 )
 
-func filesScanner(rows *sql.Rows) ([]ImageInfo, error) {
-	var images []ImageInfo
+func filesScanner(rows *sql.Rows) ([]File, error) {
+	var images []File
 	for rows.Next() {
-		image := ImageInfo{}
+		image := File{}
 		err := rows.Scan(
 			&image.Owner,
 			&image.Name,

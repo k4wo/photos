@@ -19,7 +19,7 @@ func getDimensions(width, height, resizeTo uint) (uint, uint) {
 	return resizeTo, uint(h)
 }
 
-func resizeImage(image []byte, info ImageInfo) {
+func resizeImage(image []byte, info File) {
 	imagick.Initialize()
 	defer imagick.Terminate()
 

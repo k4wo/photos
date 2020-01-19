@@ -8,19 +8,7 @@ import (
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
-	"gopkg.in/guregu/null.v3"
 )
-
-// Album is representation of db album table
-type Album struct {
-	ID        int      `json:"id"`
-	Name      string   `json:"name"`
-	Size      int      `json:"size"`
-	Owner     int      `json:"owner"`
-	Cover     null.Int `json:"cover"`
-	UpdatedAt string   `json:"updatedAt"`
-	CreatedAt string   `json:"createdAt"`
-}
 
 var selectAlbum = `
 	SELECT
@@ -34,7 +22,7 @@ var selectAlbum = `
 	FROM albums
 `
 
-func (store *dbStruct) getAlbumContent(userID int, albumID string) ([]ImageInfo, error) {
+func (store *dbStruct) getAlbumContent(userID int, albumID string) ([]File, error) {
 	rawQuery := `
 		SELECT
 			files.owner,

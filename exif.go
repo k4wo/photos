@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/h2non/filetype"
-	"github.com/rwcarlsen/goexif/exif"
 	"strconv"
 	"strings"
-	"time"
+
+	"github.com/h2non/filetype"
+	"github.com/rwcarlsen/goexif/exif"
 )
 
 type exifFields struct {
@@ -64,28 +64,6 @@ type exifFields struct {
 	YResolution                      []string `json:"YResolution"`
 }
 
-// ImageInfo image data (should have the same info like in db)
-type ImageInfo struct {
-	Date         time.Time `json:"date"`         // DateTime
-	Width        uint      `json:"width"`        // PixelXDimension
-	Height       uint      `json:"height"`       // PixelYDimension
-	FNumber      float32   `json:"fNumber"`      // FNumber
-	ExposureTime string    `json:"exposureTime"` // ExposureTime
-	FocalLength  float32   `json:"focalLength"`  // FocalLength (mm)
-	Iso          int       `json:"iso"`          // ISOSpeedRatings
-	Camera       string    `json:"camera"`       // Make
-	Model        string    `json:"model"`        // Model
-	Orientation  int       `json:"orientation"`  // Orientation
-	Longitude    float64   `json:"longitude"`
-	Latitude     float64   `json:"latitude"`
-	Name         string    `json:"name"`
-	Hash         string    `json:"hash"`
-	Extension    string    `json:"extension"`
-	MimeType     string    `json:"mimeType"`
-	Size         int       `json:"size"`
-	Owner        int       `json:"owner"`
-}
-
 func parseValues(val []string) (float64, float64) {
 	values := strings.Split(val[0], "/")
 	first, err := strconv.ParseFloat(values[0], 32)
@@ -120,7 +98,7 @@ func parseExposureTime(val []string) string {
 	return fmt.Sprintf("%d/%d", int(x/x), second)
 }
 
-func extractExif(data []byte) (ImageInfo, error) {
+func extractExif(data []byte) (File, error) {
 	kind, err := filetype.Match(data)
 	if kind == filetype.Unknown || err != nil {
 		fmt.Println("Unknown file type", err)
@@ -129,7 +107,7 @@ func extractExif(data []byte) (ImageInfo, error) {
 	file := bytes.NewReader(data)
 	fileExif, err := exif.Decode(file)
 	if err != nil {
-		return ImageInfo{}, err
+		return File{}, err
 	}
 
 	var jsonExif exifFields
@@ -142,7 +120,7 @@ func extractExif(data []byte) (ImageInfo, error) {
 	dateTime, err := fileExif.DateTime()
 	long, lat, err := fileExif.LatLong()
 
-	return ImageInfo{
+	return File{
 		dateTime,
 		uint(jsonExif.PixelXDimension[0]),
 		uint(jsonExif.PixelYDimension[0]),
