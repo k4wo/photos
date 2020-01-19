@@ -68,60 +68,21 @@ func (store *dbStruct) getAlbumContent(userID int, albumID string) ([]ImageInfo,
 	rows, _ := store.connection.Query(rawQuery, albumID, userID)
 	defer rows.Close()
 
-	return filesParser(rows)
+	return filesScanner(rows)
 }
 
 func (store *dbStruct) getAlbum(name string, userID int) (Album, error) {
 	query := selectAlbum + " WHERE owner = $1 AND name = $2"
-
 	row := store.connection.QueryRow(query, userID, name)
-	album, err := scanAlbum(row)
 
-	return album, err
+	return albumScanner(row)
 }
 
 func (store *dbStruct) getAlbums() ([]Album, error) {
 	rows, _ := store.connection.Query(selectAlbum)
 	defer rows.Close()
 
-	var albums []Album
-	for rows.Next() {
-		album := Album{}
-		err := rows.Scan(
-			&album.ID,
-			&album.Owner,
-			&album.Name,
-			&album.Size,
-			&album.Cover,
-			&album.UpdatedAt,
-			&album.CreatedAt,
-		)
-
-		if err == nil {
-			albums = append(albums, album)
-		}
-
-		if err != nil {
-			return albums, err
-		}
-	}
-
-	return albums, nil
-}
-
-func scanAlbum(row *sql.Row) (Album, error) {
-	album := Album{}
-	err := row.Scan(
-		&album.ID,
-		&album.Owner,
-		&album.Name,
-		&album.Size,
-		&album.UpdatedAt,
-		&album.CreatedAt,
-		&album.Cover,
-	)
-
-	return album, err
+	return albumsScanner(rows)
 }
 
 func (store *dbStruct) createAlbum(name string) (Album, error) {
@@ -144,8 +105,7 @@ func (store *dbStruct) createAlbum(name string) (Album, error) {
 		name,
 	)
 
-	album, err = scanAlbum(row)
-	return album, err
+	return albumScanner(row)
 }
 
 func fetchAlbums(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {

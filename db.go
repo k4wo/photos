@@ -42,7 +42,7 @@ func (store *dbStruct) getImages() ([]ImageInfo, error) {
 	rows, _ := store.connection.Query(query)
 	defer rows.Close()
 
-	return filesParser(rows)
+	return filesScanner(rows)
 }
 
 func (store *dbStruct) saveImage(image *ImageInfo) {
