@@ -97,6 +97,8 @@ func main() {
 	router.GET("/albums", fetchAlbums)
 	router.POST("/albums", addNewAlbum)
 
+	router.GET("/album/:id", getAlbumContent)
+
 	router.ServeFiles("/files/*filepath", http.Dir("./files"))
 
 	log.Println("Running")
