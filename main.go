@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/sha1"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -22,7 +23,7 @@ const FileField = "file"
 // UploadDir point to the place where files are stored
 const UploadDir = "./files/"
 
-var db dbStruct
+var db *sql.DB
 
 func createFileName(name, user string) (string, error) {
 	today := time.Now()
@@ -60,7 +61,7 @@ func saveFile(w http.ResponseWriter, file multipart.File, FileHeader *multipart.
 		fileInfo.Hash, err = createFileName(FileHeader.Filename, "k4wo")
 	}
 
-	db.saveImage(&fileInfo)
+	saveImage(&fileInfo)
 	resizeImage(data, fileInfo)
 	jsonResponse(w, http.StatusCreated, STRINGS["uploadedSuccessfully"])
 }
@@ -73,7 +74,7 @@ func jsonResponse(w http.ResponseWriter, code int, message string) {
 
 func fetchImages(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	enableCors(&w)
-	image, err := db.getImages()
+	image, err := getImages()
 	if err != nil {
 		fmt.Println("handle error")
 	}
@@ -97,7 +98,7 @@ func main() {
 	router.GET("/albums", fetchAlbums)
 	router.POST("/albums", addNewAlbum)
 
-	router.GET("/album/:id", getAlbumContent)
+	router.GET("/album/:id", fetchAlbumContent)
 
 	router.ServeFiles("/files/*filepath", http.Dir("./files"))
 

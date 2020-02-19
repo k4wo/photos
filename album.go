@@ -22,7 +22,7 @@ var selectAlbum = `
 	FROM albums
 `
 
-func (store *dbStruct) getAlbumContent(userID int, albumID string) ([]File, error) {
+func getAlbumContent(userID int, albumID string) ([]File, error) {
 	rawQuery := `
 		SELECT
 			files.owner,
@@ -53,27 +53,27 @@ func (store *dbStruct) getAlbumContent(userID int, albumID string) ([]File, erro
 	`
 
 	fmt.Println(userID, albumID)
-	rows, _ := store.connection.Query(rawQuery, albumID, userID)
+	rows, _ := db.Query(rawQuery, albumID, userID)
 	defer rows.Close()
 
 	return filesScanner(rows)
 }
 
-func (store *dbStruct) getAlbum(name string, userID int) (Album, error) {
+func getAlbum(name string, userID int) (Album, error) {
 	query := selectAlbum + " WHERE owner = $1 AND name = $2"
-	row := store.connection.QueryRow(query, userID, name)
+	row := db.QueryRow(query, userID, name)
 
 	return albumScanner(row)
 }
 
-func (store *dbStruct) getAlbums() ([]Album, error) {
-	rows, _ := store.connection.Query(selectAlbum)
+func getAlbums() ([]Album, error) {
+	rows, _ := db.Query(selectAlbum)
 	defer rows.Close()
 
 	return albumsScanner(rows)
 }
 
-func (store *dbStruct) createAlbum(name string) (Album, error) {
+func createAlbum(name string) (Album, error) {
 	if name == "" {
 		msg := fmt.Sprintf(STRINGS["noAlbumName"])
 		return Album{}, errors.New(msg)
@@ -81,13 +81,13 @@ func (store *dbStruct) createAlbum(name string) (Album, error) {
 
 	const userID = 1 // TODO: use real userID
 
-	album, err := db.getAlbum(name, userID)
+	album, err := getAlbum(name, userID)
 	if err != sql.ErrNoRows {
 		return album, err
 	}
 
 	query := `INSERT INTO albums(owner, name) VALUES($1, $2) RETURNING *`
-	row := store.connection.QueryRow(
+	row := db.QueryRow(
 		query,
 		userID,
 		name,
@@ -98,7 +98,7 @@ func (store *dbStruct) createAlbum(name string) (Album, error) {
 
 func fetchAlbums(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	enableCors(&w)
-	album, err := db.getAlbums()
+	album, err := getAlbums()
 	if err != nil {
 		fmt.Println("fetchAlbums", err)
 	}
@@ -118,7 +118,7 @@ func addNewAlbum(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		fmt.Println("addNewAlbum", err)
 	}
 
-	album, err := db.createAlbum(payload.Name)
+	album, err := createAlbum(payload.Name)
 	if err != nil {
 		fmt.Println("addNewAlbum", err)
 	}
@@ -126,10 +126,10 @@ func addNewAlbum(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	json.NewEncoder(w).Encode(album)
 }
 
-func getAlbumContent(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+func fetchAlbumContent(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	enableCors(&w)
 	albumID := p.ByName("id")
-	files, err := db.getAlbumContent(2, albumID)
+	files, err := getAlbumContent(2, albumID)
 
 	if err != nil {
 		fmt.Println("getAlbumContent", err)
