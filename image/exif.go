@@ -1,4 +1,4 @@
-package main
+package image
 
 import (
 	"bytes"
@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	model "photos/model"
 
 	"github.com/h2non/filetype"
 	"github.com/rwcarlsen/goexif/exif"
@@ -98,7 +100,8 @@ func parseExposureTime(val []string) string {
 	return fmt.Sprintf("%d/%d", int(x/x), second)
 }
 
-func extractExif(data []byte) (File, error) {
+// ExtractExif extracts exif from file and returns File
+func ExtractExif(data []byte) (model.File, error) {
 	kind, err := filetype.Match(data)
 	if kind == filetype.Unknown || err != nil {
 		fmt.Println("Unknown file type", err)
@@ -107,7 +110,7 @@ func extractExif(data []byte) (File, error) {
 	file := bytes.NewReader(data)
 	fileExif, err := exif.Decode(file)
 	if err != nil {
-		return File{}, err
+		return model.File{}, err
 	}
 
 	var jsonExif exifFields
@@ -120,7 +123,7 @@ func extractExif(data []byte) (File, error) {
 	dateTime, err := fileExif.DateTime()
 	long, lat, err := fileExif.LatLong()
 
-	return File{
+	return model.File{
 		dateTime,
 		uint(jsonExif.PixelXDimension[0]),
 		uint(jsonExif.PixelYDimension[0]),

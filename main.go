@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"time"
 
+	image "photos/image"
+
 	"github.com/julienschmidt/httprouter"
 	_ "github.com/lib/pq"
 	"github.com/subosito/gotenv"
@@ -53,7 +55,7 @@ func saveFile(w http.ResponseWriter, file multipart.File, FileHeader *multipart.
 		return
 	}
 
-	fileInfo, _ := extractExif(data)
+	fileInfo, _ := image.ExtractExif(data)
 	fileInfo.Name = FileHeader.Filename
 	fileInfo.Hash, err = createFileName(FileHeader.Filename, "k4wo")
 	if err != nil {
@@ -62,7 +64,7 @@ func saveFile(w http.ResponseWriter, file multipart.File, FileHeader *multipart.
 	}
 
 	saveImage(&fileInfo)
-	resizeImage(data, fileInfo)
+	image.ResizeImage(data, fileInfo, UploadDir)
 	jsonResponse(w, http.StatusCreated, STRINGS["uploadedSuccessfully"])
 }
 

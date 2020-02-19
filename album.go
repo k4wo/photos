@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 
+	model "photos/model"
+
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -22,7 +24,7 @@ var selectAlbum = `
 	FROM albums
 `
 
-func getAlbumContent(userID int, albumID string) ([]File, error) {
+func getAlbumContent(userID int, albumID string) ([]model.File, error) {
 	rawQuery := `
 		SELECT
 			files.owner,
@@ -59,24 +61,24 @@ func getAlbumContent(userID int, albumID string) ([]File, error) {
 	return filesScanner(rows)
 }
 
-func getAlbum(name string, userID int) (Album, error) {
+func getAlbum(name string, userID int) (model.Album, error) {
 	query := selectAlbum + " WHERE owner = $1 AND name = $2"
 	row := db.QueryRow(query, userID, name)
 
 	return albumScanner(row)
 }
 
-func getAlbums() ([]Album, error) {
+func getAlbums() ([]model.Album, error) {
 	rows, _ := db.Query(selectAlbum)
 	defer rows.Close()
 
 	return albumsScanner(rows)
 }
 
-func createAlbum(name string) (Album, error) {
+func createAlbum(name string) (model.Album, error) {
 	if name == "" {
 		msg := fmt.Sprintf(STRINGS["noAlbumName"])
-		return Album{}, errors.New(msg)
+		return model.Album{}, errors.New(msg)
 	}
 
 	const userID = 1 // TODO: use real userID

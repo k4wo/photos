@@ -1,6 +1,8 @@
-package main
+package image
 
 import (
+	model "photos/model"
+
 	"gopkg.in/gographics/imagick.v3/imagick"
 )
 
@@ -19,7 +21,8 @@ func getDimensions(width, height, resizeTo uint) (uint, uint) {
 	return resizeTo, uint(h)
 }
 
-func resizeImage(image []byte, info File) {
+// ResizeImage resize an image
+func ResizeImage(image []byte, info model.File, uploadDir string) {
 	imagick.Initialize()
 	defer imagick.Terminate()
 
@@ -35,5 +38,5 @@ func resizeImage(image []byte, info File) {
 		panic(err)
 	}
 
-	mw.WriteImage(UploadDir + info.Hash + "_mobile")
+	mw.WriteImage(uploadDir + info.Hash + "_mobile")
 }

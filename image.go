@@ -1,6 +1,8 @@
 package main
 
-func getImages() ([]File, error) {
+import model "photos/model"
+
+func getImages() ([]model.File, error) {
 	query := `
 		SELECT
 			owner,
@@ -28,7 +30,7 @@ func getImages() ([]File, error) {
 	return filesScanner(rows)
 }
 
-func saveImage(image *File) {
+func saveImage(image *model.File) {
 	sql := `
 		INSERT INTO files (
 			type, owner, name, hash, size, extension, 

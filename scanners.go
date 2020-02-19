@@ -2,12 +2,13 @@ package main
 
 import (
 	"database/sql"
+	model "photos/model"
 )
 
-func filesScanner(rows *sql.Rows) ([]File, error) {
-	var images []File
+func filesScanner(rows *sql.Rows) ([]model.File, error) {
+	var images []model.File
 	for rows.Next() {
-		image := File{}
+		image := model.File{}
 		err := rows.Scan(
 			&image.Owner,
 			&image.Name,
@@ -41,10 +42,10 @@ func filesScanner(rows *sql.Rows) ([]File, error) {
 	return images, nil
 }
 
-func albumsScanner(rows *sql.Rows) ([]Album, error) {
-	var albums []Album
+func albumsScanner(rows *sql.Rows) ([]model.Album, error) {
+	var albums []model.Album
 	for rows.Next() {
-		album := Album{}
+		album := model.Album{}
 		err := rows.Scan(
 			&album.ID,
 			&album.Owner,
@@ -67,8 +68,8 @@ func albumsScanner(rows *sql.Rows) ([]Album, error) {
 	return albums, nil
 }
 
-func albumScanner(row *sql.Row) (Album, error) {
-	album := Album{}
+func albumScanner(row *sql.Row) (model.Album, error) {
+	album := model.Album{}
 	err := row.Scan(
 		&album.ID,
 		&album.Owner,
