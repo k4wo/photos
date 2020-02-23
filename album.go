@@ -98,6 +98,24 @@ func createAlbum(name string) (model.Album, error) {
 	return albumScanner(row)
 }
 
+func deleteAlbum(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	const userID = 1 // TODO: use real userID
+	albumID := p.ByName("id")
+
+	query := `DELETE FROM albums WHERE id = $1 AND owner = $2`
+	_, err := db.Exec(
+		query,
+		albumID,
+		userID,
+	)
+
+	if err != nil {
+		fmt.Println("deleteAlbum", err)
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func fetchAlbums(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	enableCors(&w)
 	album, err := getAlbums()

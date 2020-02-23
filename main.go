@@ -100,6 +100,7 @@ func main() {
 	router.GET("/albums", fetchAlbums)
 	router.POST("/albums", addNewAlbum)
 
+	router.DELETE("/album/:id", deleteAlbum)
 	router.GET("/album/:id", fetchAlbumContent)
 
 	router.ServeFiles("/files/*filepath", http.Dir("./files"))
