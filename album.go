@@ -99,6 +99,7 @@ func createAlbum(name string) (model.Album, error) {
 }
 
 func deleteAlbum(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	enableCors(&w)
 	const userID = 1 // TODO: use real userID
 	albumID := p.ByName("id")
 
