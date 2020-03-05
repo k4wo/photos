@@ -1,6 +1,9 @@
 package main
 
-import model "photos/model"
+import (
+	"fmt"
+	model "photos/model"
+)
 
 func getImages() ([]model.File, error) {
 	query := `
@@ -72,4 +75,18 @@ func saveImage(image *model.File) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func deleteFiles(filesID []int, userID int) error {
+	args := make([]interface{}, len(filesID))
+	placeholder := ""
+	for i, id := range filesID {
+		placeholder = placeholder + fmt.Sprintf(", $%d", i+1)
+		args[i] = id
+	}
+
+	query := "DELETE FROM files WHERE id IN (" + placeholder[2:] + ")"
+	_, err := db.Exec(query, args...)
+
+	return err
 }

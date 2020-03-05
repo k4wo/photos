@@ -103,6 +103,8 @@ func main() {
 	router.DELETE("/album/:id", deleteAlbum)
 	router.GET("/album/:id", fetchAlbumContent)
 
+	router.PUT("/files/delete", deleteFileRoute)
+
 	router.ServeFiles("/files/*filepath", http.Dir("./files"))
 
 	log.Println("Running")
