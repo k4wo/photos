@@ -86,6 +86,7 @@ func fetchImages(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
 func enableCors(w *http.ResponseWriter) {
 	(*w).Header().Set("Access-Control-Allow-Origin", "*")
+	(*w).Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 }
 
 func main() {
@@ -93,6 +94,17 @@ func main() {
 	db = dbConnection()
 
 	router := httprouter.New()
+	router.GlobalOPTIONS = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Access-Control-Request-Method") != "" {
+			// Set CORS headers
+			header := w.Header()
+			header.Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			header.Set("Access-Control-Allow-Origin", "*")
+		}
+
+		// Adjust status code to 204
+		w.WriteHeader(http.StatusNoContent)
+	})
 
 	router.POST("/upload", UploadFile)
 	router.GET("/images", fetchImages)
@@ -103,7 +115,7 @@ func main() {
 	router.DELETE("/album/:id", deleteAlbum)
 	router.GET("/album/:id", fetchAlbumContent)
 
-	router.PUT("/files/delete", deleteFileRoute)
+	router.DELETE("/files/delete", deleteFileRoute)
 
 	router.ServeFiles("/files/*filepath", http.Dir("./files"))
 
