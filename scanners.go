@@ -10,6 +10,7 @@ func filesScanner(rows *sql.Rows) ([]model.File, error) {
 	for rows.Next() {
 		image := model.File{}
 		err := rows.Scan(
+			&image.ID,
 			&image.Owner,
 			&image.Name,
 			&image.Hash,

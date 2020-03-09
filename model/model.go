@@ -8,6 +8,7 @@ import (
 
 // File file descriptor
 type File struct {
+	ID           int       `json:"id"`
 	Date         time.Time `json:"date"`         // DateTime
 	Width        uint      `json:"width"`        // PixelXDimension
 	Height       uint      `json:"height"`       // PixelYDimension

@@ -27,6 +27,7 @@ var selectAlbum = `
 func getAlbumContent(userID int, albumID string) ([]model.File, error) {
 	rawQuery := `
 		SELECT
+			files.id,
 			files.owner,
 			files.name,
 			files.hash,
@@ -54,7 +55,6 @@ func getAlbumContent(userID int, albumID string) ([]model.File, error) {
 			AND user_album. "user" = $2;
 	`
 
-	fmt.Println(userID, albumID)
 	rows, _ := db.Query(rawQuery, albumID, userID)
 	defer rows.Close()
 

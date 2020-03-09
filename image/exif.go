@@ -124,6 +124,7 @@ func ExtractExif(data []byte) (model.File, error) {
 	long, lat, err := fileExif.LatLong()
 
 	return model.File{
+		0,
 		dateTime,
 		uint(jsonExif.PixelXDimension[0]),
 		uint(jsonExif.PixelYDimension[0]),

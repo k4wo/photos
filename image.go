@@ -8,6 +8,7 @@ import (
 func getImages() ([]model.File, error) {
 	query := `
 		SELECT
+			id,
 			owner,
 			name,
 			hash,
