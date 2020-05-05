@@ -57,15 +57,17 @@ CREATE TABLE "public"."albums" (
 -- Sequence and defined type
 CREATE SEQUENCE IF NOT EXISTS album_file_id_seq;
 -- Table Definition
-CREATE TABLE IF NOT EXISTS "public"."album_file" (
-  "id" int4 NOT NULL DEFAULT nextval('album_file_id_seq' :: regclass),
-  "album" int4 NOT NULL,
-  "file" int4 NOT NULL,
-  "updated_at" timestamptz DEFAULT now(),
-  "created_at" timestamptz DEFAULT now(),
-  CONSTRAINT "album_file_album_fkey" FOREIGN KEY ("album") REFERENCES "public"."albums" ("id"),
-  CONSTRAINT "album_file_file_fkey" FOREIGN KEY ("file") REFERENCES "public"."files" ("id"),
-  PRIMARY KEY ("id")
+CREATE TABLE  IF NOT EXISTS "public"."album_file" (
+    "id" int4 NOT NULL DEFAULT nextval('album_file_id_seq'::regclass),
+    "album" int4 NOT NULL,
+    "file" int4 NOT NULL,
+    "user" int4,
+    "updated_at" timestamptz DEFAULT now(),
+    "created_at" timestamptz DEFAULT now(),
+    CONSTRAINT "album_file_album_fkey" FOREIGN KEY ("album") REFERENCES "public"."albums"("id") ON DELETE CASCADE,
+    CONSTRAINT "album_file_user_fkey" FOREIGN KEY ("user") REFERENCES "public"."users"("id") ON DELETE SET NULL,
+    CONSTRAINT "album_file_file_fkey" FOREIGN KEY ("file") REFERENCES "public"."files"("id") ON DELETE CASCADE,
+    PRIMARY KEY ("id")
 );
 -- Sequence and defined type
 CREATE SEQUENCE IF NOT EXISTS user_album_id_seq;

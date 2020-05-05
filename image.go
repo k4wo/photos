@@ -5,6 +5,20 @@ import (
 	model "photos/model"
 )
 
+func hasFileAccess(userID, fileID int) bool {
+	var count int
+	rawQuery := "SELECT count(id) FROM files WHERE id = $1 AND owner = $2"
+
+	row := db.QueryRow(rawQuery, fileID, userID)
+	err := row.Scan(&count)
+	if err != nil {
+		fmt.Println(err)
+		return false
+	}
+
+	return count > 0
+}
+
 func getImages() ([]model.File, error) {
 	query := `
 		SELECT

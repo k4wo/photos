@@ -24,6 +24,34 @@ var selectAlbum = `
 	FROM albums
 `
 
+func hasAlbumAccess(userID int, albumID string) bool {
+	var count int
+	rawQuery := `SELECT count(id) FROM albums WHERE owner = $1 AND id = $2`
+
+	row := db.QueryRow(rawQuery, albumID, userID)
+	err := row.Scan(&count)
+	if err != nil {
+		fmt.Println(err)
+		return false
+	}
+
+	return count > 0
+}
+
+func isFileInAlbum(fileID int, albumID string) bool {
+	var count int
+	rawQuery := `SELECT count(id) FROM album_file WHERE file = $1 AND album = $2`
+
+	row := db.QueryRow(rawQuery, fileID, albumID)
+	err := row.Scan(&count)
+	if err != nil {
+		fmt.Println(err)
+		return true
+	}
+
+	return count > 0
+}
+
 func getAlbumContent(userID int, albumID string) ([]model.File, error) {
 	rawQuery := `
 		SELECT
@@ -157,4 +185,52 @@ func fetchAlbumContent(w http.ResponseWriter, r *http.Request, p httprouter.Para
 	}
 
 	json.NewEncoder(w).Encode(files)
+}
+
+func addFilesToAlbum(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	albumID := p.ByName("id")
+	const userID = 1 // TODO: use real userID
+
+	hasAccess := hasAlbumAccess(userID, albumID)
+	if !hasAccess {
+		jsonResponse(w, http.StatusForbidden, "NOTOK")
+		return
+	}
+
+	type Payload struct {
+		Files []int `json:"files"`
+	}
+	var payload Payload
+	err := json.NewDecoder(r.Body).Decode(&payload)
+	if err != nil {
+		fmt.Println("addFilesToAlbum", err)
+		jsonResponse(w, http.StatusForbidden, "NOTOK")
+		return
+	}
+
+	for _, fileID := range payload.Files {
+		if !hasFileAccess(userID, fileID) {
+			fmt.Println("addFilesToAlbum", "no access", fileID)
+			jsonResponse(w, http.StatusForbidden, "NOTOK")
+			return
+		}
+	}
+
+	for _, fileID := range payload.Files {
+		if !isFileInAlbum(fileID, albumID) {
+			rawQuery := `INSERT INTO "album_file"("album", "file", "user") VALUES($1, $2, $3);`
+			_, err = db.Exec(
+				rawQuery,
+				albumID,
+				fileID,
+				userID,
+			)
+
+			if err != nil {
+				fmt.Println("addFilesToAlbum", err)
+			}
+		}
+	}
+
+	jsonResponse(w, http.StatusOK, "OK")
 }
