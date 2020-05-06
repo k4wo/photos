@@ -28,7 +28,7 @@ func hasAlbumAccess(userID int, albumID string) bool {
 	var count int
 	rawQuery := `SELECT count(id) FROM albums WHERE owner = $1 AND id = $2`
 
-	row := db.QueryRow(rawQuery, albumID, userID)
+	row := db.QueryRow(rawQuery, userID, albumID)
 	err := row.Scan(&count)
 	if err != nil {
 		fmt.Println(err)
@@ -188,6 +188,7 @@ func fetchAlbumContent(w http.ResponseWriter, r *http.Request, p httprouter.Para
 }
 
 func addFilesToAlbum(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	enableCors(&w)
 	albumID := p.ByName("id")
 	const userID = 1 // TODO: use real userID
 
