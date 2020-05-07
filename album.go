@@ -235,3 +235,47 @@ func addFilesToAlbum(w http.ResponseWriter, r *http.Request, p httprouter.Params
 
 	jsonResponse(w, http.StatusOK, "OK")
 }
+
+func setAlbumCover(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	enableCors(&w)
+	albumID := p.ByName("id")
+	const userID = 1 // TODO: use real userID
+
+	hasAccess := hasAlbumAccess(userID, albumID)
+	if !hasAccess {
+		jsonResponse(w, http.StatusForbidden, "")
+		return
+	}
+
+	type Payload struct {
+		File int `json:"file"`
+	}
+	var payload Payload
+	json.NewDecoder(r.Body).Decode(&payload)
+
+	if !hasFileAccess(userID, payload.File) {
+		fmt.Println("setAlbumCover", "no access", payload.File)
+		jsonResponse(w, http.StatusForbidden, "")
+		return
+	}
+
+	if isFileInAlbum(payload.File, albumID) {
+		rawQuery := `UPDATE albums SET cover = $1 WHERE id = $2`
+		_, err := db.Exec(
+			rawQuery,
+			payload.File,
+			albumID,
+		)
+
+		if err != nil {
+			fmt.Println("setAlbumCover", err)
+			jsonResponse(w, http.StatusInternalServerError, "")
+			return
+		}
+
+		jsonResponse(w, http.StatusOK, "OK")
+		return
+	}
+
+	jsonResponse(w, http.StatusBadRequest, "")
+}
