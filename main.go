@@ -116,6 +116,7 @@ func main() {
 	router.DELETE("/album/:id", deleteAlbum)
 	router.GET("/album/:id", fetchAlbumContentRoute)
 	router.PUT("/album/:id/files", addFilesToAlbumRoute)
+	router.DELETE("/album/:id/file", removeFromAlbumRoute)
 	router.PUT("/album/:id/cover", setAlbumCoverRoute)
 
 	router.DELETE("/files/delete", deleteFileRoute)

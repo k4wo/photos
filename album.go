@@ -228,3 +228,15 @@ func setAlbumCover(albumID string, userID, fileID int) int {
 
 	return http.StatusBadRequest
 }
+
+func removeFromAlbum(albumID string, userID, fileID int) int {
+	hasAccess := hasAlbumAccess(userID, albumID)
+	if !hasAccess {
+		return http.StatusForbidden
+	}
+
+	rawQuery := `DELETE FROM "album_file" WHERE file = $1;`
+	db.QueryRow(rawQuery, fileID)
+
+	return http.StatusOK
+}

@@ -74,3 +74,23 @@ func fetchAlbumsRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 
 	json.NewEncoder(w).Encode(album)
 }
+
+func removeFromAlbumRoute(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	enableCors(&w)
+	albumID := p.ByName("id")
+
+	type Payload struct {
+		File int `json:"file"`
+	}
+	var payload Payload
+	err := json.NewDecoder(r.Body).Decode(&payload)
+
+	if err != nil || payload.File == 0 {
+		fmt.Println("removeFromAlbumRoute", err)
+		jsonResponse(w, http.StatusBadRequest, "")
+		return
+	}
+
+	status := removeFromAlbum(albumID, userID, payload.File)
+	jsonResponse(w, status, "")
+}
