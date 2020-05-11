@@ -22,6 +22,7 @@ var selectAlbum = `
 		updated_at,
 		created_at
 	FROM albums
+	WHERE owner = $1
 `
 
 func hasAlbumAccess(userID int, albumID string) bool {
@@ -90,14 +91,14 @@ func getAlbumContent(userID int, albumID string) ([]model.File, error) {
 }
 
 func getAlbum(name string, userID int) (model.Album, error) {
-	query := selectAlbum + " WHERE owner = $1 AND name = $2"
+	query := selectAlbum + " AND name = $2"
 	row := db.QueryRow(query, userID, name)
 
 	return albumScanner(row)
 }
 
-func getAlbums() ([]model.Album, error) {
-	rows, _ := db.Query(selectAlbum)
+func getAlbums(userID int) ([]model.Album, error) {
+	rows, _ := db.Query(selectAlbum, userID)
 	defer rows.Close()
 
 	return albumsScanner(rows)
@@ -145,16 +146,6 @@ func deleteAlbum(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func fetchAlbums(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	enableCors(&w)
-	album, err := getAlbums()
-	if err != nil {
-		fmt.Println("fetchAlbums", err)
-	}
-
-	json.NewEncoder(w).Encode(album)
-}
-
 func addNewAlbum(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	enableCors(&w)
 	type Payload struct {
@@ -175,52 +166,24 @@ func addNewAlbum(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	json.NewEncoder(w).Encode(album)
 }
 
-func fetchAlbumContent(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-	enableCors(&w)
-	albumID := p.ByName("id")
-	files, err := getAlbumContent(2, albumID)
-
-	if err != nil {
-		fmt.Println("getAlbumContent", err)
-	}
-
-	json.NewEncoder(w).Encode(files)
-}
-
-func addFilesToAlbum(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-	enableCors(&w)
-	albumID := p.ByName("id")
-	const userID = 1 // TODO: use real userID
-
+func addFilesToAlbum(albumID string, userID int, files []int) int {
 	hasAccess := hasAlbumAccess(userID, albumID)
 	if !hasAccess {
-		jsonResponse(w, http.StatusForbidden, "NOTOK")
-		return
+		return http.StatusForbidden
 	}
 
-	type Payload struct {
-		Files []int `json:"files"`
-	}
-	var payload Payload
-	err := json.NewDecoder(r.Body).Decode(&payload)
-	if err != nil {
-		fmt.Println("addFilesToAlbum", err)
-		jsonResponse(w, http.StatusForbidden, "NOTOK")
-		return
-	}
-
-	for _, fileID := range payload.Files {
+	for _, fileID := range files {
 		if !hasFileAccess(userID, fileID) {
 			fmt.Println("addFilesToAlbum", "no access", fileID)
-			jsonResponse(w, http.StatusForbidden, "NOTOK")
-			return
+
+			return http.StatusForbidden
 		}
 	}
 
-	for _, fileID := range payload.Files {
+	for _, fileID := range files {
 		if !isFileInAlbum(fileID, albumID) {
 			rawQuery := `INSERT INTO "album_file"("album", "file", "user") VALUES($1, $2, $3);`
-			_, err = db.Exec(
+			_, err := db.Exec(
 				rawQuery,
 				albumID,
 				fileID,
@@ -233,49 +196,35 @@ func addFilesToAlbum(w http.ResponseWriter, r *http.Request, p httprouter.Params
 		}
 	}
 
-	jsonResponse(w, http.StatusOK, "OK")
+	return http.StatusOK
 }
 
-func setAlbumCover(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-	enableCors(&w)
-	albumID := p.ByName("id")
-	const userID = 1 // TODO: use real userID
-
+func setAlbumCover(albumID string, userID, fileID int) int {
 	hasAccess := hasAlbumAccess(userID, albumID)
 	if !hasAccess {
-		jsonResponse(w, http.StatusForbidden, "")
-		return
+		return http.StatusForbidden
 	}
 
-	type Payload struct {
-		File int `json:"file"`
-	}
-	var payload Payload
-	json.NewDecoder(r.Body).Decode(&payload)
-
-	if !hasFileAccess(userID, payload.File) {
-		fmt.Println("setAlbumCover", "no access", payload.File)
-		jsonResponse(w, http.StatusForbidden, "")
-		return
+	if !hasFileAccess(userID, fileID) {
+		fmt.Println("setAlbumCover", "no access", fileID)
+		return http.StatusForbidden
 	}
 
-	if isFileInAlbum(payload.File, albumID) {
+	if isFileInAlbum(fileID, albumID) {
 		rawQuery := `UPDATE albums SET cover = $1 WHERE id = $2`
 		_, err := db.Exec(
 			rawQuery,
-			payload.File,
+			fileID,
 			albumID,
 		)
 
 		if err != nil {
 			fmt.Println("setAlbumCover", err)
-			jsonResponse(w, http.StatusInternalServerError, "")
-			return
+			return http.StatusInternalServerError
 		}
 
-		jsonResponse(w, http.StatusOK, "OK")
-		return
+		return http.StatusOK
 	}
 
-	jsonResponse(w, http.StatusBadRequest, "")
+	return http.StatusBadRequest
 }

@@ -25,6 +25,7 @@ const FileField = "file"
 // UploadDir point to the place where files are stored
 const UploadDir = "./files/"
 
+const userID = 1 // TODO: use real userID
 var db *sql.DB
 
 func createFileName(name, user string) (string, error) {
@@ -109,13 +110,13 @@ func main() {
 	router.POST("/upload", UploadFile)
 	router.GET("/images", fetchImages)
 
-	router.GET("/albums", fetchAlbums)
+	router.GET("/albums", fetchAlbumsRoute)
 	router.POST("/albums", addNewAlbum)
 
 	router.DELETE("/album/:id", deleteAlbum)
-	router.GET("/album/:id", fetchAlbumContent)
-	router.PUT("/album/:id/files", addFilesToAlbum)
-	router.PUT("/album/:id/cover", setAlbumCover)
+	router.GET("/album/:id", fetchAlbumContentRoute)
+	router.PUT("/album/:id/files", addFilesToAlbumRoute)
+	router.PUT("/album/:id/cover", setAlbumCoverRoute)
 
 	router.DELETE("/files/delete", deleteFileRoute)
 
