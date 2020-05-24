@@ -12,6 +12,30 @@ import (
 	"time"
 )
 
+var selectFile = `
+	SELECT
+		id,
+		owner,
+		name,
+		hash,
+		size,
+		extension,
+		mime,
+		latitude,
+		longitude,
+		orientation,
+		model,
+		camera,
+		iso,
+		focal_length,
+		exposure_time,
+		f_number,
+		height,
+		width,
+		date
+	FROM files
+`
+
 func hasFileAccess(userID, fileID int) bool {
 	var count int
 	rawQuery := "SELECT count(id) FROM files WHERE id = $1 AND owner = $2"
@@ -26,34 +50,19 @@ func hasFileAccess(userID, fileID int) bool {
 	return count > 0
 }
 
-func getFile(fileID int) ([]model.File, error) {
-	query := `
-		SELECT
-			id,
-			owner,
-			name,
-			hash,
-			size,
-			extension,
-			mime,
-			latitude,
-			longitude,
-			orientation,
-			model,
-			camera,
-			iso,
-			focal_length,
-			exposure_time,
-			f_number,
-			height,
-			width,
-			date
-		FROM files
-		WHERE owner = $1`
-	rows, _ := db.Query(query, fileID)
+func getFiles(userID int) ([]model.File, error) {
+	query := selectFile + " WHERE owner = $1"
+	rows, _ := db.Query(query, userID)
 	defer rows.Close()
 
 	return filesScanner(rows)
+}
+
+func getFileByID(fileID int) (model.File, error) {
+	query := selectFile + " WHERE id = $1"
+	row := db.QueryRow(query, fileID)
+
+	return fileScanner(row)
 }
 
 func saveFile(image *model.File) {

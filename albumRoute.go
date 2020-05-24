@@ -24,8 +24,15 @@ func setAlbumCoverRoute(w http.ResponseWriter, r *http.Request, p httprouter.Par
 		return
 	}
 
-	status := setAlbumCover(albumID, userID, payload.File)
-	jsonResponse(w, status, "")
+	status, fileStruct := setAlbumCover(albumID, userID, payload.File)
+	file, err := json.Marshal(&fileStruct)
+
+	if err != nil {
+		fmt.Println("setAlbumCoverRoute", err)
+		jsonResponse(w, http.StatusInternalServerError, "")
+	} else {
+		jsonResponse(w, status, string(file))
+	}
 }
 
 func addFilesToAlbumRoute(w http.ResponseWriter, r *http.Request, p httprouter.Params) {

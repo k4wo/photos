@@ -33,14 +33,39 @@ func filesScanner(rows *sql.Rows) ([]model.File, error) {
 
 		if err == nil {
 			images = append(images, image)
-		}
-
-		if err != nil {
+		} else {
 			return images, err
 		}
 	}
 
 	return images, nil
+}
+
+func fileScanner(row *sql.Row) (model.File, error) {
+	file := model.File{}
+	err := row.Scan(
+		&file.ID,
+		&file.Owner,
+		&file.Name,
+		&file.Hash,
+		&file.Size,
+		&file.Extension,
+		&file.MimeType,
+		&file.Latitude,
+		&file.Longitude,
+		&file.Orientation,
+		&file.Model,
+		&file.Camera,
+		&file.Iso,
+		&file.FocalLength,
+		&file.ExposureTime,
+		&file.FNumber,
+		&file.Height,
+		&file.Width,
+		&file.Date,
+	)
+
+	return file, err
 }
 
 func albumsScanner(rows *sql.Rows) ([]model.Album, error) {

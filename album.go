@@ -81,7 +81,7 @@ func getAlbumContent(userID int, albumID string) ([]model.File, error) {
 			LEFT JOIN user_album ON user_album.album = album_file.album
 		WHERE
 			album_file. "album" = $1
-			AND user_album. "user" = $2;
+			AND album_file. "user" = $2;
 	`
 
 	rows, _ := db.Query(rawQuery, albumID, userID)
@@ -199,34 +199,35 @@ func addFilesToAlbum(albumID string, userID int, files []int) int {
 	return http.StatusOK
 }
 
-func setAlbumCover(albumID string, userID, fileID int) int {
+func setAlbumCover(albumID string, userID, fileID int) (int, model.File) {
 	hasAccess := hasAlbumAccess(userID, albumID)
 	if !hasAccess {
-		return http.StatusForbidden
+		return http.StatusForbidden, model.File{}
 	}
 
 	if !hasFileAccess(userID, fileID) {
 		fmt.Println("setAlbumCover", "no access", fileID)
-		return http.StatusForbidden
+		return http.StatusForbidden, model.File{}
 	}
 
 	if isFileInAlbum(fileID, albumID) {
-		rawQuery := `UPDATE albums SET cover = $1 WHERE id = $2`
-		_, err := db.Exec(
+		rawQuery := `UPDATE albums SET cover = $1 WHERE id = $2 RETURNING *`
+		db.QueryRow(
 			rawQuery,
 			fileID,
 			albumID,
 		)
 
+		file, err := getFileByID(fileID)
 		if err != nil {
 			fmt.Println("setAlbumCover", err)
-			return http.StatusInternalServerError
+			return http.StatusInternalServerError, model.File{}
 		}
 
-		return http.StatusOK
+		return http.StatusOK, file
 	}
 
-	return http.StatusBadRequest
+	return http.StatusBadRequest, model.File{}
 }
 
 func removeFromAlbum(albumID string, userID, fileID int) int {

@@ -40,7 +40,7 @@ func uploadFilesRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 
 func fetchFilesRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	enableCors(&w)
-	image, err := getFile(userID)
+	files, err := getFiles(userID)
 	if err != nil {
 		fmt.Println("fetchFilesRoute", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -48,5 +48,5 @@ func fetchFilesRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 		return
 	}
 
-	json.NewEncoder(w).Encode(image)
+	json.NewEncoder(w).Encode(files)
 }
