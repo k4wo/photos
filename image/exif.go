@@ -11,6 +11,7 @@ import (
 
 	"github.com/h2non/filetype"
 	"github.com/rwcarlsen/goexif/exif"
+	"gopkg.in/guregu/null.v3"
 )
 
 type exifFields struct {
@@ -78,16 +79,20 @@ func parseValues(val []string) (float64, float64) {
 	return first, second
 }
 
-func convertToFloat(val []string) float32 {
+func convertToFloat(val []string) null.Float {
 	first, second := parseValues(val)
 
-	return float32(first / second)
+	return null.FloatFrom(float64(first / second))
 }
 
-func parseExposureTime(val []string) string {
+func convertToInt(val int) null.Int {
+	return null.IntFrom(int64(val))
+}
+
+func parseExposureTime(val []string) null.String {
 	x, y := parseValues(val)
 	if x == 0 || y == 0 {
-		return ""
+		return null.StringFrom("")
 	}
 
 	var second uint
@@ -97,7 +102,7 @@ func parseExposureTime(val []string) string {
 		second = uint(y / x)
 	}
 
-	return fmt.Sprintf("%d/%d", int(x/x), second)
+	return null.StringFrom(fmt.Sprintf("%d/%d", int(x/x), second))
 }
 
 // ExtractExif extracts exif from file and returns File
@@ -124,24 +129,21 @@ func ExtractExif(data []byte) (model.File, error) {
 	long, lat, err := fileExif.LatLong()
 
 	return model.File{
-		0,
-		dateTime,
-		uint(jsonExif.PixelXDimension[0]),
-		uint(jsonExif.PixelYDimension[0]),
-		convertToFloat(jsonExif.FNumber),
-		parseExposureTime(jsonExif.ExposureTime),
-		convertToFloat(jsonExif.FocalLength),
-		jsonExif.ISOSpeedRatings[0],
-		jsonExif.Make,
-		jsonExif.Model,
-		jsonExif.Orientation[0],
-		long,
-		lat,
-		"",
-		"",
-		kind.Extension,
-		kind.MIME.Value,
-		len(data),
-		1,
+		Camera:       null.StringFrom(jsonExif.Make),
+		Date:         null.TimeFrom(dateTime),
+		ExposureTime: parseExposureTime(jsonExif.ExposureTime),
+		Extension:    null.StringFrom(kind.Extension),
+		FNumber:      convertToFloat(jsonExif.FNumber),
+		FocalLength:  convertToFloat(jsonExif.FocalLength),
+		Height:       convertToInt(jsonExif.PixelYDimension[0]),
+		Iso:          convertToInt(jsonExif.ISOSpeedRatings[0]),
+		Latitude:     null.FloatFrom(lat),
+		Longitude:    null.FloatFrom(long),
+		MimeType:     null.StringFrom(kind.MIME.Value),
+		Model:        null.StringFrom(jsonExif.Model),
+		Orientation:  convertToInt(jsonExif.Orientation[0]),
+		Owner:        convertToInt(1),
+		Size:         convertToInt(len(data)),
+		Width:        convertToInt(jsonExif.PixelXDimension[0]),
 	}, nil
 }

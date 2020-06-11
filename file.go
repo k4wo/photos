@@ -10,6 +10,8 @@ import (
 	"photos/image"
 	model "photos/model"
 	"time"
+
+	"gopkg.in/guregu/null.v3"
 )
 
 var selectFile = `
@@ -136,14 +138,14 @@ func writeFile(file multipart.File, FileHeader *multipart.FileHeader, userID int
 	}
 
 	fileInfo, _ := image.ExtractExif(data)
-	fileInfo.Name = FileHeader.Filename
-	fileInfo.Hash, err = createFileName(FileHeader.Filename, userID)
+	fileInfo.Name = null.StringFrom(FileHeader.Filename)
+	fileInfo.Hash, _ = createFileName(FileHeader.Filename, userID)
 	image.ResizeImage(data, fileInfo, UploadDir)
 
 	return &fileInfo, nil
 }
 
-func createFileName(name string, user int) (string, error) {
+func createFileName(name string, user int) (null.String, error) {
 	today := time.Now()
 	now := today.UnixNano()
 	fileName := fmt.Sprintf("%s_%d_%d", name, user, now)
@@ -151,10 +153,10 @@ func createFileName(name string, user int) (string, error) {
 	h := sha1.New()
 	_, err := io.WriteString(h, fileName)
 	if err != nil {
-		return "", err
+		return null.NewString("", false), err
 	}
 
-	return fmt.Sprintf("%x", h.Sum(nil)), nil
+	return null.StringFrom(fmt.Sprintf("%x", h.Sum(nil))), nil
 }
 
 func processFiles(files []*multipart.FileHeader, userID int) int {

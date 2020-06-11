@@ -6,11 +6,11 @@ import (
 	"gopkg.in/gographics/imagick.v3/imagick"
 )
 
-const mobileWidth uint = 640
-const tabletWidth uint = 1280
-const displayWidth uint = 1920
+const mobileWidth int64 = 640
+const tabletWidth int64 = 1280
+const displayWidth int64 = 1920
 
-func getDimensions(width, height, resizeTo uint) (uint, uint) {
+func getDimensions(width, height, resizeTo int64) (int64, int64) {
 	if width <= resizeTo {
 		return width, height
 	}
@@ -18,7 +18,7 @@ func getDimensions(width, height, resizeTo uint) (uint, uint) {
 	percent := float64(resizeTo) * 100 / float64(width)
 	h := percent / 100 * float64(height)
 
-	return resizeTo, uint(h)
+	return resizeTo, int64(h)
 }
 
 // ResizeImage resize an image
@@ -31,12 +31,12 @@ func ResizeImage(image []byte, info model.File, uploadDir string) {
 		panic(err)
 	}
 
-	mobileW, mobileH := getDimensions(info.Width, info.Height, displayWidth)
-	mw.ResizeImage(mobileW, mobileH, imagick.FILTER_LANCZOS)
+	mobileW, mobileH := getDimensions(info.Width.Int64, info.Height.Int64, displayWidth)
+	mw.ResizeImage(uint(mobileW), uint(mobileH), imagick.FILTER_LANCZOS)
 
 	if err := mw.SetImageCompressionQuality(75); err != nil {
 		panic(err)
 	}
 
-	mw.WriteImage(uploadDir + info.Hash + "_mobile")
+	mw.WriteImage(uploadDir + info.Hash.String + "_mobile")
 }

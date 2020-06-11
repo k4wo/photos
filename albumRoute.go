@@ -66,6 +66,7 @@ func fetchAlbumContentRoute(w http.ResponseWriter, r *http.Request, p httprouter
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(files)
 }
 
@@ -79,6 +80,7 @@ func fetchAlbumsRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(album)
 }
 

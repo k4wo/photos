@@ -14,15 +14,35 @@ import (
 
 var selectAlbum = `
 	SELECT
-		id,
-		owner,
-		name,
-		size,
-		cover,
-		updated_at,
-		created_at
+		albums.id,
+		albums.owner,
+		albums.name,
+		albums.size,
+		albums.updated_at,
+		albums.created_at,
+
+		files.id,
+		files.owner,
+		files.name,
+		files.hash,
+		files.size,
+		files.extension,
+		files.mime,
+		files.latitude,
+		files.longitude,
+		files.orientation,
+		files.model,
+		files.camera,
+		files.iso,
+		files.focal_length,
+		files.exposure_time,
+		files.f_number,
+		files.height,
+		files.width,
+		files.date
 	FROM albums
-	WHERE owner = $1
+	LEFT JOIN files ON albums.cover = files.id
+	WHERE albums.owner = $1
 `
 
 func hasAlbumAccess(userID int, albumID string) bool {
