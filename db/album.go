@@ -1,15 +1,13 @@
-package main
+package db
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 
+	constants "photos/constants"
 	model "photos/model"
-
-	"github.com/julienschmidt/httprouter"
 )
 
 var selectAlbum = `
@@ -45,7 +43,7 @@ var selectAlbum = `
 	WHERE albums.owner = $1
 `
 
-func hasAlbumAccess(userID int, albumID string) bool {
+func hasAlbumAccess(userID int, albumID string, db *sql.DB) bool {
 	var count int
 	rawQuery := `SELECT count(id) FROM albums WHERE owner = $1 AND id = $2`
 
@@ -59,7 +57,7 @@ func hasAlbumAccess(userID int, albumID string) bool {
 	return count > 0
 }
 
-func isFileInAlbum(fileID int, albumID string) bool {
+func isFileInAlbum(fileID int, albumID string, db *sql.DB) bool {
 	var count int
 	rawQuery := `SELECT count(id) FROM album_file WHERE file = $1 AND album = $2`
 
@@ -73,7 +71,7 @@ func isFileInAlbum(fileID int, albumID string) bool {
 	return count > 0
 }
 
-func getAlbumContent(userID int, albumID string) ([]model.File, error) {
+func GetAlbumContent(userID int, albumID string, db *sql.DB) ([]model.File, error) {
 	rawQuery := `
 		SELECT
 			files.id,
@@ -110,29 +108,27 @@ func getAlbumContent(userID int, albumID string) ([]model.File, error) {
 	return filesScanner(rows)
 }
 
-func getAlbum(name string, userID int) (model.Album, error) {
+func GetAlbum(name string, userID int, db *sql.DB) (model.Album, error) {
 	query := selectAlbum + " AND name = $2"
 	row := db.QueryRow(query, userID, name)
 
 	return albumScanner(row)
 }
 
-func getAlbums(userID int) ([]model.Album, error) {
+func GetAlbums(userID int, db *sql.DB) ([]model.Album, error) {
 	rows, _ := db.Query(selectAlbum, userID)
 	defer rows.Close()
 
 	return albumsScanner(rows)
 }
 
-func createAlbum(name string) (model.Album, error) {
+func CreateAlbum(userID int, name string, db *sql.DB) (model.Album, error) {
 	if name == "" {
-		msg := fmt.Sprintf(STRINGS["noAlbumName"])
+		msg := fmt.Sprintf(constants.STRINGS["noAlbumName"])
 		return model.Album{}, errors.New(msg)
 	}
 
-	const userID = 1 // TODO: use real userID
-
-	album, err := getAlbum(name, userID)
+	album, err := GetAlbum(name, userID, db)
 	if err != sql.ErrNoRows {
 		return album, err
 	}
@@ -147,53 +143,14 @@ func createAlbum(name string) (model.Album, error) {
 	return albumScanner(row)
 }
 
-func deleteAlbum(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-	enableCors(&w)
-	const userID = 1 // TODO: use real userID
-	albumID := p.ByName("id")
-
-	query := `DELETE FROM albums WHERE id = $1 AND owner = $2`
-	_, err := db.Exec(
-		query,
-		albumID,
-		userID,
-	)
-
-	if err != nil {
-		fmt.Println("deleteAlbum", err)
-	}
-
-	w.WriteHeader(http.StatusOK)
-}
-
-func addNewAlbum(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	enableCors(&w)
-	type Payload struct {
-		Name string `json:"name"`
-	}
-	var payload Payload
-
-	err := json.NewDecoder(r.Body).Decode(&payload)
-	if err != nil {
-		fmt.Println("addNewAlbum", err)
-	}
-
-	album, err := createAlbum(payload.Name)
-	if err != nil {
-		fmt.Println("addNewAlbum", err)
-	}
-
-	json.NewEncoder(w).Encode(album)
-}
-
-func addFilesToAlbum(albumID string, userID int, files []int) int {
-	hasAccess := hasAlbumAccess(userID, albumID)
+func AddFilesToAlbum(albumID string, userID int, files []int, db *sql.DB) int {
+	hasAccess := hasAlbumAccess(userID, albumID, db)
 	if !hasAccess {
 		return http.StatusForbidden
 	}
 
 	for _, fileID := range files {
-		if !hasFileAccess(userID, fileID) {
+		if !hasFileAccess(userID, fileID, db) {
 			fmt.Println("addFilesToAlbum", "no access", fileID)
 
 			return http.StatusForbidden
@@ -201,7 +158,7 @@ func addFilesToAlbum(albumID string, userID int, files []int) int {
 	}
 
 	for _, fileID := range files {
-		if !isFileInAlbum(fileID, albumID) {
+		if !isFileInAlbum(fileID, albumID, db) {
 			rawQuery := `INSERT INTO "album_file"("album", "file", "user") VALUES($1, $2, $3);`
 			_, err := db.Exec(
 				rawQuery,
@@ -219,26 +176,26 @@ func addFilesToAlbum(albumID string, userID int, files []int) int {
 	return http.StatusOK
 }
 
-func setAlbumCover(albumID string, userID, fileID int) (int, model.File) {
-	hasAccess := hasAlbumAccess(userID, albumID)
+func SetAlbumCover(albumID string, userID, fileID int, db *sql.DB) (int, model.File) {
+	hasAccess := hasAlbumAccess(userID, albumID, db)
 	if !hasAccess {
 		return http.StatusForbidden, model.File{}
 	}
 
-	if !hasFileAccess(userID, fileID) {
+	if !hasFileAccess(userID, fileID, db) {
 		fmt.Println("setAlbumCover", "no access", fileID)
 		return http.StatusForbidden, model.File{}
 	}
 
-	if isFileInAlbum(fileID, albumID) {
-		rawQuery := `UPDATE albums SET cover = $1 WHERE id = $2 RETURNING *`
-		db.QueryRow(
+	if isFileInAlbum(fileID, albumID, db) {
+		rawQuery := `UPDATE albums SET cover = $1 WHERE id = $2`
+		db.Exec(
 			rawQuery,
 			fileID,
 			albumID,
 		)
 
-		file, err := getFileByID(fileID)
+		file, err := getFileByID(fileID, db)
 		if err != nil {
 			fmt.Println("setAlbumCover", err)
 			return http.StatusInternalServerError, model.File{}
@@ -250,14 +207,25 @@ func setAlbumCover(albumID string, userID, fileID int) (int, model.File) {
 	return http.StatusBadRequest, model.File{}
 }
 
-func removeFromAlbum(albumID string, userID, fileID int) int {
-	hasAccess := hasAlbumAccess(userID, albumID)
+func RemoveFromAlbum(albumID string, userID, fileID int, db *sql.DB) int {
+	hasAccess := hasAlbumAccess(userID, albumID, db)
 	if !hasAccess {
 		return http.StatusForbidden
 	}
 
 	rawQuery := `DELETE FROM "album_file" WHERE file = $1;`
-	db.QueryRow(rawQuery, fileID)
+	db.Exec(rawQuery, fileID)
 
 	return http.StatusOK
+}
+
+func DeleteAlbum(albumID string, userID int, db *sql.DB) error {
+	query := `DELETE FROM albums WHERE id = $1 AND owner = $2`
+	_, err := db.Exec(
+		query,
+		albumID,
+		userID,
+	)
+
+	return err
 }

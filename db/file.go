@@ -1,12 +1,14 @@
-package main
+package db
 
 import (
 	"crypto/sha1"
+	"database/sql"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
+	"photos/constants"
 	"photos/image"
 	model "photos/model"
 	"time"
@@ -38,7 +40,7 @@ var selectFile = `
 	FROM files
 `
 
-func hasFileAccess(userID, fileID int) bool {
+func hasFileAccess(userID, fileID int, db *sql.DB) bool {
 	var count int
 	rawQuery := "SELECT count(id) FROM files WHERE id = $1 AND owner = $2"
 
@@ -52,7 +54,7 @@ func hasFileAccess(userID, fileID int) bool {
 	return count > 0
 }
 
-func getFiles(userID int) ([]model.File, error) {
+func GetFiles(userID int, db *sql.DB) ([]model.File, error) {
 	query := selectFile + " WHERE owner = $1"
 	rows, _ := db.Query(query, userID)
 	defer rows.Close()
@@ -60,14 +62,14 @@ func getFiles(userID int) ([]model.File, error) {
 	return filesScanner(rows)
 }
 
-func getFileByID(fileID int) (model.File, error) {
+func getFileByID(fileID int, db *sql.DB) (model.File, error) {
 	query := selectFile + " WHERE id = $1"
 	row := db.QueryRow(query, fileID)
 
 	return fileScanner(row)
 }
 
-func saveFile(image *model.File) {
+func saveFile(image *model.File, userID int, db *sql.DB) {
 	sql := `
 		INSERT INTO files (
 			type, owner, name, hash, size, extension, 
@@ -85,7 +87,7 @@ func saveFile(image *model.File) {
 
 	_, err := db.Exec(
 		sql,
-		fileType["image"],
+		constants.FileType["image"],
 		userID,
 		image.Name,
 		image.Hash,
@@ -111,7 +113,7 @@ func saveFile(image *model.File) {
 	}
 }
 
-func deleteFiles(filesID []int, userID int) error {
+func DeleteFiles(filesID []int, userID int, db *sql.DB) error {
 	args := make([]interface{}, len(filesID))
 	placeholder := ""
 	for i, id := range filesID {
@@ -125,27 +127,33 @@ func deleteFiles(filesID []int, userID int) error {
 	return err
 }
 
-func writeFile(file multipart.File, FileHeader *multipart.FileHeader, userID int) (*model.File, error) {
+func writeFile(
+	file multipart.File,
+	FileHeader *multipart.FileHeader,
+	userID int,
+	uploadDir string,
+	db *sql.DB,
+) (*model.File, error) {
 	data, err := ioutil.ReadAll(file)
 	if err != nil {
 		return &model.File{}, err
 	}
 
 	// BUG: don't use real name for file name, can be overrided
-	err = ioutil.WriteFile(UploadDir+FileHeader.Filename, data, 0666)
+	err = ioutil.WriteFile(uploadDir+FileHeader.Filename, data, 0666)
 	if err != nil {
 		return &model.File{}, err
 	}
 
 	fileInfo, _ := image.ExtractExif(data)
 	fileInfo.Name = null.StringFrom(FileHeader.Filename)
-	fileInfo.Hash, _ = createFileName(FileHeader.Filename, userID)
-	image.ResizeImage(data, fileInfo, UploadDir)
+	fileInfo.Hash, _ = createFileName(FileHeader.Filename, userID, db)
+	image.ResizeImage(data, fileInfo, uploadDir)
 
 	return &fileInfo, nil
 }
 
-func createFileName(name string, user int) (null.String, error) {
+func createFileName(name string, user int, db *sql.DB) (null.String, error) {
 	today := time.Now()
 	now := today.UnixNano()
 	fileName := fmt.Sprintf("%s_%d_%d", name, user, now)
@@ -159,7 +167,7 @@ func createFileName(name string, user int) (null.String, error) {
 	return null.StringFrom(fmt.Sprintf("%x", h.Sum(nil))), nil
 }
 
-func processFiles(files []*multipart.FileHeader, userID int) int {
+func ProcessFiles(files []*multipart.FileHeader, userID int, uploadDir string, db *sql.DB) int {
 	for _, file := range files {
 		f, err := file.Open()
 
@@ -173,7 +181,7 @@ func processFiles(files []*multipart.FileHeader, userID int) int {
 		mimeType := file.Header.Get("Content-Type")
 
 		if mimeType == "image/jpeg" || mimeType == "image/png" {
-			fileInfo, err := writeFile(f, file, userID)
+			fileInfo, err := writeFile(f, file, userID, uploadDir, db)
 
 			if err != nil {
 				fmt.Println("processFile", err)
@@ -181,7 +189,7 @@ func processFiles(files []*multipart.FileHeader, userID int) int {
 				return http.StatusInternalServerError
 			}
 
-			saveFile(fileInfo)
+			saveFile(fileInfo, userID, db)
 		} else {
 			return http.StatusBadRequest
 		}

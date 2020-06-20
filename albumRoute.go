@@ -6,6 +6,8 @@ import (
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
+
+	appDB "photos/db"
 )
 
 func setAlbumCoverRoute(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
@@ -24,7 +26,7 @@ func setAlbumCoverRoute(w http.ResponseWriter, r *http.Request, p httprouter.Par
 		return
 	}
 
-	status, fileStruct := setAlbumCover(albumID, userID, payload.File)
+	status, fileStruct := appDB.SetAlbumCover(albumID, userID, payload.File, db)
 	file, err := json.Marshal(&fileStruct)
 
 	if err != nil {
@@ -51,14 +53,14 @@ func addFilesToAlbumRoute(w http.ResponseWriter, r *http.Request, p httprouter.P
 		return
 	}
 
-	status := addFilesToAlbum(albumID, userID, payload.Files)
+	status := appDB.AddFilesToAlbum(albumID, userID, payload.Files, db)
 	jsonResponse(w, status, "")
 }
 
 func fetchAlbumContentRoute(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	enableCors(&w)
 	albumID := p.ByName("id")
-	files, err := getAlbumContent(userID, albumID)
+	files, err := appDB.GetAlbumContent(userID, albumID, db)
 
 	if err != nil {
 		fmt.Println("fetchAlbumContentRoute", err)
@@ -72,7 +74,7 @@ func fetchAlbumContentRoute(w http.ResponseWriter, r *http.Request, p httprouter
 
 func fetchAlbumsRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	enableCors(&w)
-	album, err := getAlbums(userID)
+	album, err := appDB.GetAlbums(userID, db)
 
 	if err != nil {
 		fmt.Println("fetchAlbumsRoute", err)
@@ -100,6 +102,39 @@ func removeFromAlbumRoute(w http.ResponseWriter, r *http.Request, p httprouter.P
 		return
 	}
 
-	status := removeFromAlbum(albumID, userID, payload.File)
+	status := appDB.RemoveFromAlbum(albumID, userID, payload.File, db)
 	jsonResponse(w, status, "")
+}
+
+func addNewAlbumRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	enableCors(&w)
+	type Payload struct {
+		Name string `json:"name"`
+	}
+	var payload Payload
+
+	err := json.NewDecoder(r.Body).Decode(&payload)
+	if err != nil {
+		fmt.Println("addNewAlbum", err)
+	}
+
+	album, err := appDB.CreateAlbum(userID, payload.Name, db)
+	if err != nil {
+		fmt.Println("addNewAlbum", err)
+	}
+
+	json.NewEncoder(w).Encode(album)
+}
+
+func deleteAlbumRoute(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	enableCors(&w)
+	albumID := p.ByName("id")
+
+	err := appDB.DeleteAlbum(albumID, userID, db)
+
+	if err != nil {
+		fmt.Println("deleteAlbum", err)
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

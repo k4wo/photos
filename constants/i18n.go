@@ -1,4 +1,4 @@
-package main
+package constants
 
 // STRINGS should be used for i18n at later stage
 var STRINGS = map[string]string{

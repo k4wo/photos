@@ -52,9 +52,9 @@ func main() {
 	router.GET("/images", fetchFilesRoute)
 
 	router.GET("/albums", fetchAlbumsRoute)
-	router.POST("/albums", addNewAlbum)
+	router.POST("/albums", addNewAlbumRoute)
 
-	router.DELETE("/album/:id", deleteAlbum)
+	router.DELETE("/album/:id", deleteAlbumRoute)
 	router.GET("/album/:id", fetchAlbumContentRoute)
 	router.PUT("/album/:id/files", addFilesToAlbumRoute)
 	router.DELETE("/album/:id/file", removeFromAlbumRoute)

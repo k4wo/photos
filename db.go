@@ -6,13 +6,6 @@ import (
 	"os"
 )
 
-var fileType = map[string]string{
-	"image":     "IMAGE",
-	"video":     "VIDEO",
-	"animation": "ANIMATION",
-	"collage":   "COLLAGE",
-}
-
 func dbConnection() *sql.DB {
 	dbConfig := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",

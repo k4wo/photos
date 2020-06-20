@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
+	appDB "photos/db"
+
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -20,7 +22,7 @@ func deleteFileRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params
 		panic(err)
 	}
 
-	err = deleteFiles(payload.ID, userID)
+	err = appDB.DeleteFiles(payload.ID, userID, db)
 	if err != nil {
 		fmt.Println("deleteFile", err)
 	}
@@ -33,14 +35,14 @@ func uploadFilesRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Param
 
 	r.ParseMultipartForm(32 << 20) // 32MB is the default used by FormFile
 	files := r.MultipartForm.File["files"]
-	status := processFiles(files, userID)
+	status := appDB.ProcessFiles(files, userID, UploadDir, db)
 
 	w.WriteHeader(status)
 }
 
 func fetchFilesRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	enableCors(&w)
-	files, err := getFiles(userID)
+	files, err := appDB.GetFiles(userID, db)
 	if err != nil {
 		fmt.Println("fetchFilesRoute", err)
 		w.WriteHeader(http.StatusInternalServerError)
