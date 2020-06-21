@@ -71,6 +71,13 @@ func isFileInAlbum(fileID int, albumID string, db *sql.DB) bool {
 	return count > 0
 }
 
+func getAlbumByName(name string, userID int, db *sql.DB) (model.Album, error) {
+	query := selectAlbum + " AND name = $2"
+	row := db.QueryRow(query, userID, name)
+
+	return albumScanner(row)
+}
+
 func GetAlbumContent(userID int, albumID string, db *sql.DB) ([]model.File, error) {
 	rawQuery := `
 		SELECT
@@ -108,13 +115,6 @@ func GetAlbumContent(userID int, albumID string, db *sql.DB) ([]model.File, erro
 	return filesScanner(rows)
 }
 
-func GetAlbum(name string, userID int, db *sql.DB) (model.Album, error) {
-	query := selectAlbum + " AND name = $2"
-	row := db.QueryRow(query, userID, name)
-
-	return albumScanner(row)
-}
-
 func GetAlbums(userID int, db *sql.DB) ([]model.Album, error) {
 	rows, _ := db.Query(selectAlbum, userID)
 	defer rows.Close()
@@ -128,7 +128,7 @@ func CreateAlbum(userID int, name string, db *sql.DB) (model.Album, error) {
 		return model.Album{}, errors.New(msg)
 	}
 
-	album, err := GetAlbum(name, userID, db)
+	album, err := getAlbumByName(name, userID, db)
 	if err != sql.ErrNoRows {
 		return album, err
 	}
