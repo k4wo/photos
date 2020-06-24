@@ -7,4 +7,5 @@ var STRINGS = map[string]string{
 	"uploadedSuccessfully": "File uploaded successfully!.",
 	"noAlbumName":          "Please provide name of album.",
 	"albumNameTaken":       "Name `%s` already exists. Please specify other for the album.",
+	"noAccessToAlbum":      "You don't have access to the album",
 }

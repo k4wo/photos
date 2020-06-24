@@ -5,9 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 
 	constants "photos/constants"
 	model "photos/model"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 var selectAlbum = `
@@ -43,14 +47,26 @@ var selectAlbum = `
 	WHERE albums.owner = $1
 `
 
+// hasAlbumAccess checks if an user is an owner of the album or
+// the album is shared with him
 func hasAlbumAccess(userID int, albumID string, db *sql.DB) bool {
 	var count int
-	rawQuery := `SELECT count(id) FROM albums WHERE owner = $1 AND id = $2`
+	rawQuery := `
+		SELECT
+			count(*)
+		FROM
+			albums
+			LEFT JOIN user_album ON user_album.album = albums.id
+		WHERE 
+			(albums.owner = $1 AND albums.id = $2)
+			OR (user_album.album = $2 AND user_album.user = $1);
+	`
 
 	row := db.QueryRow(rawQuery, userID, albumID)
 	err := row.Scan(&count)
 	if err != nil {
-		fmt.Println(err)
+		log.Error().Err(err).Caller().Int("user", userID).Str("album", albumID)
+
 		return false
 	}
 
@@ -64,7 +80,8 @@ func isFileInAlbum(fileID int, albumID string, db *sql.DB) bool {
 	row := db.QueryRow(rawQuery, fileID, albumID)
 	err := row.Scan(&count)
 	if err != nil {
-		fmt.Println(err)
+		log.Error().Err(err).Caller().Int("file", fileID).Str("album", albumID)
+
 		return true
 	}
 
@@ -72,13 +89,21 @@ func isFileInAlbum(fileID int, albumID string, db *sql.DB) bool {
 }
 
 func getAlbumByName(name string, userID int, db *sql.DB) (model.Album, error) {
-	query := selectAlbum + " AND name = $2"
+	query := selectAlbum + " AND albums.name = $2"
 	row := db.QueryRow(query, userID, name)
 
 	return albumScanner(row)
 }
 
+// GetAlbumContent returns files from an album where a user is an owner or the album
+// is shared with the user
 func GetAlbumContent(userID int, albumID string, db *sql.DB) ([]model.File, error) {
+	hasAccess := hasAlbumAccess(userID, albumID, db)
+	if !hasAccess {
+		return []model.File{}, errors.New(constants.STRINGS["noAccessToAlbum"])
+	}
+
+	// user has access to the album so take all files from the album
 	rawQuery := `
 		SELECT
 			files.id,
@@ -101,20 +126,19 @@ func GetAlbumContent(userID int, albumID string, db *sql.DB) ([]model.File, erro
 			files.width,
 			files.date
 		FROM
-			album_file
-			LEFT JOIN files ON files.id = album_file.file
-			LEFT JOIN user_album ON user_album.album = album_file.album
+			files
+			LEFT JOIN album_file ON files.id = album_file.file
 		WHERE
-			album_file. "album" = $1
-			AND album_file. "user" = $2;
+			album_file."album" = $1;
 	`
 
-	rows, _ := db.Query(rawQuery, albumID, userID)
+	rows, _ := db.Query(rawQuery, albumID)
 	defer rows.Close()
 
 	return filesScanner(rows)
 }
 
+// GetAlbums returns all albums with a cover where a user is an owner
 func GetAlbums(userID int, db *sql.DB) ([]model.Album, error) {
 	rows, _ := db.Query(selectAlbum, userID)
 	defer rows.Close()
@@ -122,10 +146,10 @@ func GetAlbums(userID int, db *sql.DB) ([]model.Album, error) {
 	return albumsScanner(rows)
 }
 
+// CreateAlbum creates an album and returns it without cover. Pass an id as cover
 func CreateAlbum(userID int, name string, db *sql.DB) (model.Album, error) {
 	if name == "" {
-		msg := fmt.Sprintf(constants.STRINGS["noAlbumName"])
-		return model.Album{}, errors.New(msg)
+		return model.Album{}, errors.New(constants.STRINGS["noAlbumName"])
 	}
 
 	album, err := getAlbumByName(name, userID, db)
@@ -140,9 +164,10 @@ func CreateAlbum(userID int, name string, db *sql.DB) (model.Album, error) {
 		name,
 	)
 
-	return albumScanner(row)
+	return albumScannerWithoutCover(row)
 }
 
+// AddFilesToAlbum adds file(s) to the album where user is an owner or the album is shared with him
 func AddFilesToAlbum(albumID string, userID int, files []int, db *sql.DB) int {
 	hasAccess := hasAlbumAccess(userID, albumID, db)
 	if !hasAccess {
@@ -151,7 +176,11 @@ func AddFilesToAlbum(albumID string, userID int, files []int, db *sql.DB) int {
 
 	for _, fileID := range files {
 		if !hasFileAccess(userID, fileID, db) {
-			fmt.Println("addFilesToAlbum", "no access", fileID)
+			log.Warn().
+				Caller().
+				Int("user", userID).
+				Int("file", fileID).
+				Msg("Don't have access to the file")
 
 			return http.StatusForbidden
 		}
@@ -159,7 +188,7 @@ func AddFilesToAlbum(albumID string, userID int, files []int, db *sql.DB) int {
 
 	for _, fileID := range files {
 		if !isFileInAlbum(fileID, albumID, db) {
-			rawQuery := `INSERT INTO "album_file"("album", "file", "user") VALUES($1, $2, $3);`
+			rawQuery := `INSERT INTO "album_file"("album", "file", "added_by") VALUES($1, $2, $3);`
 			_, err := db.Exec(
 				rawQuery,
 				albumID,
@@ -176,14 +205,11 @@ func AddFilesToAlbum(albumID string, userID int, files []int, db *sql.DB) int {
 	return http.StatusOK
 }
 
+// SetAlbumCover sets an albums' cover only when a user have access to the album
+// and a file is already in the album
 func SetAlbumCover(albumID string, userID, fileID int, db *sql.DB) (int, model.File) {
 	hasAccess := hasAlbumAccess(userID, albumID, db)
 	if !hasAccess {
-		return http.StatusForbidden, model.File{}
-	}
-
-	if !hasFileAccess(userID, fileID, db) {
-		fmt.Println("setAlbumCover", "no access", fileID)
 		return http.StatusForbidden, model.File{}
 	}
 
@@ -197,7 +223,12 @@ func SetAlbumCover(albumID string, userID, fileID int, db *sql.DB) (int, model.F
 
 		file, err := getFileByID(fileID, db)
 		if err != nil {
-			fmt.Println("setAlbumCover", err)
+			log.Error().
+				Err(err).
+				Caller().
+				Str("action", "getFileByID").
+				Int("file", fileID)
+
 			return http.StatusInternalServerError, model.File{}
 		}
 
@@ -207,6 +238,8 @@ func SetAlbumCover(albumID string, userID, fileID int, db *sql.DB) (int, model.F
 	return http.StatusBadRequest, model.File{}
 }
 
+// RemoveFromAlbum removes a file from an album if a user has access to the album.
+// Doesn't care whether the user is an owner of the file / album.
 func RemoveFromAlbum(albumID string, userID, fileID int, db *sql.DB) int {
 	hasAccess := hasAlbumAccess(userID, albumID, db)
 	if !hasAccess {
@@ -219,7 +252,14 @@ func RemoveFromAlbum(albumID string, userID, fileID int, db *sql.DB) int {
 	return http.StatusOK
 }
 
+// DeleteAlbum deletes an album by a user who is an owner. DB takes care of
+// removing all related data from `user_album` and `album_file` tables
 func DeleteAlbum(albumID string, userID int, db *sql.DB) error {
+	hasAccess := hasAlbumAccess(userID, albumID, db)
+	if !hasAccess {
+		return errors.New(constants.STRINGS["noAccessToAlbum"])
+	}
+
 	query := `DELETE FROM albums WHERE id = $1 AND owner = $2`
 	_, err := db.Exec(
 		query,
@@ -228,4 +268,11 @@ func DeleteAlbum(albumID string, userID int, db *sql.DB) error {
 	)
 
 	return err
+}
+
+func init() {
+	if os.Getenv("ENV") != "production" {
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	}
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 }

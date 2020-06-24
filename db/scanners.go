@@ -68,6 +68,22 @@ func fileScanner(row *sql.Row) (model.File, error) {
 	return file, err
 }
 
+func albumScannerWithoutCover(row *sql.Row) (model.Album, error) {
+	album := model.Album{}
+
+	err := row.Scan(
+		&album.ID,
+		&album.Owner,
+		&album.Name,
+		&album.Size,
+		&album.Cover,
+		&album.UpdatedAt,
+		&album.CreatedAt,
+	)
+
+	return album, err
+}
+
 func albumsScanner(rows *sql.Rows) ([]model.Album, error) {
 	var albums []model.Album
 

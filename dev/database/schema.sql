@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS "public"."files" (
   "date" timestamptz,
   "updated_at" timestamptz DEFAULT now(),
   "created_at" timestamptz DEFAULT now(),
-  CONSTRAINT "files_owner_fkey" FOREIGN KEY ("owner") REFERENCES "public"."users" ("id"),
+  CONSTRAINT "files_owner_fkey" FOREIGN KEY ("owner") REFERENCES "public"."users" ("id") ON DELETE CASCADE,
   PRIMARY KEY ("id")
 );
 -- Sequence and defined type
@@ -50,8 +50,8 @@ CREATE TABLE "public"."albums" (
     "cover" int4,
     "updated_at" time DEFAULT now(),
     "created_at" time DEFAULT now(),
-    CONSTRAINT "albums_cover_fkey" FOREIGN KEY ("cover") REFERENCES "public"."files"("id"),
-    CONSTRAINT "albums_owner_fkey" FOREIGN KEY ("owner") REFERENCES "public"."users"("id"),
+    CONSTRAINT "albums_cover_fkey" FOREIGN KEY ("cover") REFERENCES "public"."files"("id") ON DELETE CASCADE,
+    CONSTRAINT "albums_owner_fkey" FOREIGN KEY ("owner") REFERENCES "public"."users"("id") ON DELETE CASCADE,
     PRIMARY KEY ("id")
 );
 -- Sequence and defined type
@@ -60,12 +60,12 @@ CREATE SEQUENCE IF NOT EXISTS album_file_id_seq;
 CREATE TABLE  IF NOT EXISTS "public"."album_file" (
     "id" int4 NOT NULL DEFAULT nextval('album_file_id_seq'::regclass),
     "album" int4 NOT NULL,
+    "added_by" int4,
     "file" int4 NOT NULL,
-    "user" int4,
     "updated_at" timestamptz DEFAULT now(),
     "created_at" timestamptz DEFAULT now(),
     CONSTRAINT "album_file_album_fkey" FOREIGN KEY ("album") REFERENCES "public"."albums"("id") ON DELETE CASCADE,
-    CONSTRAINT "album_file_user_fkey" FOREIGN KEY ("user") REFERENCES "public"."users"("id") ON DELETE SET NULL,
+    CONSTRAINT "album_file_added_by_fkey" FOREIGN KEY ("added_by") REFERENCES "public"."users"("id") ON DELETE SET NULL,
     CONSTRAINT "album_file_file_fkey" FOREIGN KEY ("file") REFERENCES "public"."files"("id") ON DELETE CASCADE,
     PRIMARY KEY ("id")
 );
@@ -79,8 +79,8 @@ CREATE TABLE IF NOT EXISTS "public"."user_album" (
   "privilege" int2 NOT NULL DEFAULT 0,
   "updated_at" timestamptz DEFAULT now(),
   "created_at" timestamptz DEFAULT now(),
-  CONSTRAINT "user_album_user_fkey" FOREIGN KEY ("user") REFERENCES "public"."users" ("id"),
-  CONSTRAINT "user_album_album_fkey" FOREIGN KEY ("album") REFERENCES "public"."albums" ("id"),
+  CONSTRAINT "user_album_user_fkey" FOREIGN KEY ("user") REFERENCES "public"."users" ("id") ON DELETE CASCADE,
+  CONSTRAINT "user_album_album_fkey" FOREIGN KEY ("album") REFERENCES "public"."albums" ("id") ON DELETE CASCADE,
   PRIMARY KEY ("id")
 );
 -- Sequence and defined type
@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS "public"."user_file" (
   "privilege" int2 NOT NULL DEFAULT 0,
   "updated_at" timestamptz DEFAULT now(),
   "created_at" timestamptz DEFAULT now(),
-  CONSTRAINT "user_file_user_fkey" FOREIGN KEY ("user") REFERENCES "public"."users" ("id"),
-  CONSTRAINT "user_file_file_fkey" FOREIGN KEY ("file") REFERENCES "public"."files" ("id"),
+  CONSTRAINT "user_file_user_fkey" FOREIGN KEY ("user") REFERENCES "public"."users" ("id") ON DELETE CASCADE,
+  CONSTRAINT "user_file_file_fkey" FOREIGN KEY ("file") REFERENCES "public"."files" ("id") ON DELETE CASCADE,
   PRIMARY KEY ("id")
 );
