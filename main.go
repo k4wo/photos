@@ -3,11 +3,13 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"net/http"
+	"os"
 
 	"github.com/julienschmidt/httprouter"
 	_ "github.com/lib/pq"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/subosito/gotenv"
 )
 
@@ -33,6 +35,10 @@ func enableCors(w *http.ResponseWriter) {
 
 func main() {
 	gotenv.Load()
+	if os.Getenv("ENV") != "production" {
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	}
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	db = dbConnection()
 
 	router := httprouter.New()
@@ -64,6 +70,6 @@ func main() {
 
 	router.ServeFiles("/files/*filepath", http.Dir("./files"))
 
-	log.Println("Running")
+	log.Info().Msg("Running")
 	http.ListenAndServe(":8080", router)
 }

@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+
+	"github.com/rs/zerolog/log"
 )
 
 func dbConnection() *sql.DB {
@@ -26,7 +28,7 @@ func dbConnection() *sql.DB {
 		panic(err)
 	}
 
-	fmt.Println("Connected to DB successfully.")
+	log.Info().Str("database", "postgres").Msg("Connected successfully")
 
 	return database
 }
