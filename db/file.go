@@ -13,6 +13,7 @@ import (
 	model "photos/model"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"gopkg.in/guregu/null.v3"
 )
 
@@ -47,13 +48,15 @@ func hasFileAccess(userID, fileID int, db *sql.DB) bool {
 	row := db.QueryRow(rawQuery, fileID, userID)
 	err := row.Scan(&count)
 	if err != nil {
-		fmt.Println(err)
+		log.Error().Err(err).Caller().Int("user", userID).Int("file", fileID)
+
 		return false
 	}
 
 	return count > 0
 }
 
+// GetFiles gets all files which belongs to a user
 func GetFiles(userID int, db *sql.DB) ([]model.File, error) {
 	query := selectFile + " WHERE owner = $1"
 	rows, _ := db.Query(query, userID)
@@ -69,7 +72,7 @@ func getFileByID(fileID int, db *sql.DB) (model.File, error) {
 	return fileScanner(row)
 }
 
-func saveFile(image *model.File, userID int, db *sql.DB) {
+func saveFile(file *model.File, userID int, db *sql.DB) bool {
 	sql := `
 		INSERT INTO files (
 			type, owner, name, hash, size, extension, 
@@ -89,42 +92,69 @@ func saveFile(image *model.File, userID int, db *sql.DB) {
 		sql,
 		constants.FileType["image"],
 		userID,
-		image.Name,
-		image.Hash,
-		image.Size,
-		image.Extension,
-		image.MimeType,
-		image.Latitude,
-		image.Longitude,
-		image.Orientation,
-		image.Model,
-		image.Camera,
-		image.Iso,
-		image.FocalLength,
-		image.ExposureTime,
-		image.FNumber,
-		image.Height,
-		image.Width,
-		image.Date,
+		file.Name,
+		file.Hash,
+		file.Size,
+		file.Extension,
+		file.MimeType,
+		file.Latitude,
+		file.Longitude,
+		file.Orientation,
+		file.Model,
+		file.Camera,
+		file.Iso,
+		file.FocalLength,
+		file.ExposureTime,
+		file.FNumber,
+		file.Height,
+		file.Width,
+		file.Date,
 	)
 
 	if err != nil {
-		panic(err)
+		log.Error().Err(err).Caller().Int("user", userID).Msg("Problem with inserting a file")
+
+		return false
 	}
+
+	return true
 }
 
-func DeleteFiles(filesID []int, userID int, db *sql.DB) error {
-	args := make([]interface{}, len(filesID))
-	placeholder := ""
-	for i, id := range filesID {
-		placeholder = placeholder + fmt.Sprintf(", $%d", i+1)
-		args[i] = id
+// DeleteFiles deletes only those files which are owned by a user.
+// For deleting related entries in other tables `album_file`, `user_file`, etc.
+// db takes care. Returning id of not inserted files.
+// TODO: add physically removing from disc / storage
+func DeleteFiles(filesID []int, userID int, db *sql.DB) []int {
+	var notInserted []int
+	query := "DELETE FROM files WHERE id = $1"
+
+	for _, file := range filesID {
+		if hasFileAccess(userID, file, db) {
+			result, err := db.Exec(query, file)
+			rowsNo, _ := result.RowsAffected()
+
+			if err != nil || rowsNo == 0 {
+				notInserted = append(notInserted, file)
+
+				log.Error().
+					Err(err).
+					Caller().
+					Int("user", userID).
+					Int("file", file).
+					Msg("Problem with deleting a file")
+			}
+		} else {
+			notInserted = append(notInserted, file)
+
+			log.Warn().
+				Caller().
+				Int("user", userID).
+				Int("file", file).
+				Msg("Problem with deleting a file")
+		}
 	}
 
-	query := "DELETE FROM files WHERE id IN (" + placeholder[2:] + ")"
-	_, err := db.Exec(query, args...)
-
-	return err
+	return notInserted
 }
 
 func writeFile(
@@ -134,20 +164,27 @@ func writeFile(
 	uploadDir string,
 	db *sql.DB,
 ) (*model.File, error) {
+
 	data, err := ioutil.ReadAll(file)
 	if err != nil {
+		log.Error().Err(err).Caller().Int("user", userID).Msg("Can't read a file")
+
 		return &model.File{}, err
 	}
 
-	// BUG: don't use real name for file name, can be overrided
-	err = ioutil.WriteFile(uploadDir+FileHeader.Filename, data, 0666)
+	nullHash, _ := createFileName(FileHeader.Filename, userID, db)
+	hash := nullHash.ValueOrZero()
+
+	err = ioutil.WriteFile(uploadDir+hash, data, 0666)
 	if err != nil {
+		log.Error().Err(err).Caller().Int("user", userID).Str("hash", hash).Msg("Can't write a file")
+
 		return &model.File{}, err
 	}
 
 	fileInfo, _ := image.ExtractExif(data)
 	fileInfo.Name = null.StringFrom(FileHeader.Filename)
-	fileInfo.Hash, _ = createFileName(FileHeader.Filename, userID, db)
+	fileInfo.Hash = nullHash
 	image.ResizeImage(data, fileInfo, uploadDir)
 
 	return &fileInfo, nil
@@ -161,18 +198,26 @@ func createFileName(name string, user int, db *sql.DB) (null.String, error) {
 	h := sha1.New()
 	_, err := io.WriteString(h, fileName)
 	if err != nil {
+		log.Error().
+			Err(err).
+			Caller().
+			Int("user", user).
+			Str("name", name).
+			Msg("Can't create a file name")
+
 		return null.NewString("", false), err
 	}
 
 	return null.StringFrom(fmt.Sprintf("%x", h.Sum(nil))), nil
 }
 
+// ProcessFiles saves on disk file and than insert data to db. It accepts only jpeg/png so far.
 func ProcessFiles(files []*multipart.FileHeader, userID int, uploadDir string, db *sql.DB) int {
 	for _, file := range files {
 		f, err := file.Open()
 
 		if err != nil {
-			fmt.Println("processFile", err)
+			log.Error().Err(err).Caller().Int("user", userID).Msg("Can't open a file")
 
 			return http.StatusInternalServerError
 		}
@@ -184,11 +229,12 @@ func ProcessFiles(files []*multipart.FileHeader, userID int, uploadDir string, d
 			fileInfo, err := writeFile(f, file, userID, uploadDir, db)
 
 			if err != nil {
-				fmt.Println("processFile", err)
+				log.Error().Err(err).Caller().Int("user", userID).Msg("Failed write a file")
 
 				return http.StatusInternalServerError
 			}
 
+			// TODO: after fail remove the file
 			saveFile(fileInfo, userID, db)
 		} else {
 			return http.StatusBadRequest
